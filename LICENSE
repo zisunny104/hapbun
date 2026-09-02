@@ -61,4 +61,4 @@ Tocas UI 內含 Font Awesome Free 圖示（Icons CC BY 4.0 / Fonts SIL OFL 1.1 /
 
 Noto Sans TC（Regular／Bold 靜態字重）由 `install_font.php` 於首次執行時自
 Google Fonts CDN（`fonts.gstatic.com`）下載並快取於 `fonts/` 目錄，授權為
-SIL Open Font License 1.1，不隨本倉庫原始碼一併散布。
+SIL Open Font License 1.1，不隨本 repo 原始碼一併散布。

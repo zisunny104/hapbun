@@ -56,7 +56,7 @@ PDF 合併排版工具，可設定多頁、增加封面與目錄、頁碼，方�
 
 ### 獨立使用
 
-1. 克隆倉庫：
+1. Clone repo：
 ```bash
 git clone https://github.com/zisunny104/hapbun.git
 cd hapbun
@@ -68,7 +68,7 @@ cd hapbun
 
 ### 與 KoiLiSu 開利手整合
 
-1. 將此倉庫放置在 `koilisu/apps/hapbun/` 目錄
+1. 將此 repo 放置在 `koilisu/apps/hapbun/` 目錄
 2. 透過 `https://toka.dev/koilisu/hapbun` 造訪
 
 ## 其他說明
