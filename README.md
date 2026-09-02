@@ -69,7 +69,7 @@ cd hapbun
 ### 與 KoiLiSu Framework 整合
 
 1. 將此倉庫放置在 `koilisu/apps/hapbun/` 目錄
-2. 通過 `/koilisu/hapbun` 訪問
+2. 透過 `https://toka.dev/koilisu/hapbun` 造訪
 
 ## 其他說明
 
@@ -108,7 +108,7 @@ pdf-lib 預設僅支援 WinAnsi 編碼（Helvetica 等標準字型），無法�
 **版本**：1.0.4
 **作者**：Tokas (Xiang-zi Xie)
 **專案**：KoiLiSu 開利手
-**網址**：/koilisu/hapbun
+**網址**：https://toka.dev/koilisu/hapbun
 
 ## 更新日誌
 
