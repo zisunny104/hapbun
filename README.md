@@ -52,6 +52,25 @@ PDF 合併排版工具，可設定多頁、增加封面與目錄、頁碼，方�
 - **檔案下載**：downloadjs 1.4.7
 - **處理方式**：完全在瀏覽器端處理，無需後端伺服器
 
+## 安裝
+
+### 獨立使用
+
+1. 克隆倉庫：
+```bash
+git clone https://github.com/zisunny104/hapbun.git
+cd hapbun
+```
+
+2. 配置網頁伺服器
+
+3. 直接訪問 `index.php`
+
+### 與 KoiLiSu Framework 整合
+
+1. 將此倉庫放置在 `koilisu/apps/hapbun/` 目錄
+2. 通過 `/koilisu/hapbun` 訪問
+
 ## 其他說明
 
 ### 中文字型嵌入方案
