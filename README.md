@@ -66,7 +66,7 @@ cd hapbun
 
 3. 直接訪問 `index.php`
 
-### 與 KoiLiSu Framework 整合
+### 與 KoiLiSu 開利手整合
 
 1. 將此倉庫放置在 `koilisu/apps/hapbun/` 目錄
 2. 透過 `https://toka.dev/koilisu/hapbun` 造訪
