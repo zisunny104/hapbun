@@ -1425,7 +1425,7 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
                     </div>
                     <div class="ts-text is-description">
                         Built with ❤️ using Tocas UI |
-                        <a href="https://github.com/zisunny104/koilisu-hapbun" target="_blank"
+                        <a href="https://github.com/zisunny104/hapbun" target="_blank"
                             style="display: inline-block; padding: 2px 8px; background: #24292f; color: white; text-decoration: none; border-radius: 6px; font-size: 0.85em; font-weight: 500; margin-left: 4px;">
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"
                                 style="vertical-align: text-bottom; margin-right: 4px;">
