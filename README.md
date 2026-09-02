@@ -94,14 +94,14 @@ pdf-lib 預設僅支援 WinAnsi 編碼（Helvetica 等標準字型），無法�
 
 ## 使用的開源函式庫
 
-- [pdf-lib](https://pdf-lib.js.org/) - Mozilla Public License 2.0
+- [pdf-lib](https://pdf-lib.js.org/) - MIT License
 - [@pdf-lib/fontkit](https://github.com/Hopding/fontkit) - MIT License
 - [downloadjs](https://github.com/rndme/download) - MIT License
 - [Tocas UI](https://tocas-ui.com/) - MIT License
 
 ## 授權
 
-此專案為 KoiLiSu 開利手專案的一部分，由 Tokas (Xiang-zi Xie) 開發。
+此專案為 [KoiLiSu 開利手](https://github.com/zisunny104/koilisu) 專案的一部分，MIT 授權，由 Tokas (Xiang-zi Xie) 開發。詳見 [LICENSE](LICENSE)。
 
 ---
 
