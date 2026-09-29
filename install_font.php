@@ -13,6 +13,10 @@ $fonts = [
     'https://fonts.gstatic.com/s/notosanstc/v39/-nFuOG829Oofr2wohFbTp9ifNAn722rq0MXz70e1_Co.ttf',
 ];
 
+// 下載前先檢查環境，讓失敗原因看得出來（而不是只有 file_get_contents_failed）
+$envError = !ini_get('allow_url_fopen') ? 'allow_url_fopen_disabled'
+    : (!extension_loaded('openssl') ? 'openssl_extension_missing' : null);
+
 if (!is_dir($fontDir)) {
     if (!mkdir($fontDir, 0755, true)) {
         http_response_code(500);
@@ -69,11 +73,11 @@ foreach ($fonts as $filename => $url) {
         $results[$filename] = 'already_exists';
         continue;
     }
-    $r = downloadFont($url, $dest);
+    $r = $envError ? ['ok' => false, 'error' => $envError] : downloadFont($url, $dest);
     $results[$filename] = $r['ok'] ? 'downloaded' : ('failed:' . $r['error']);
 }
 
-$anyFailed = in_array(true, array_map(fn($v) => str_starts_with($v, 'failed:'), $results), true);
+$anyFailed = in_array(true, array_map(fn($v) => strpos($v, 'failed:') === 0, $results), true);
 if ($anyFailed) {
     http_response_code(500);
 }

@@ -54,11 +54,32 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
     }
     </style>
     <script id="clientEventHandlersJS" language="javascript" type="text/javascript">
+    // CDN 函式庫載入失敗時不直接丟 ReferenceError 讓整頁失效，改在頁面上提示並停用處理鈕
+    const missingDeps = [
+        ['PDFLib', 'pdf-lib'],
+        ['fontkit', '@pdf-lib/fontkit'],
+        ['download', 'downloadjs']
+    ].filter(([globalName]) => typeof window[globalName] === 'undefined').map(([, name]) => name);
     const {
         PDFDocument,
         rgb,
         StandardFonts
-    } = PDFLib;
+    } = window.PDFLib || {};
+
+    function showNotice(type, title, message) {
+        const notice = document.getElementById('appNotice');
+        notice.className = `ts-notice is-${type} has-top-spaced`;
+        notice.querySelector('.title').textContent = title;
+        notice.querySelector('.content').textContent = message;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (missingDeps.length > 0) {
+            showNotice('negative', '必要元件載入失敗',
+                `無法從 CDN（unpkg.com）載入：${missingDeps.join('、')}。請確認網路連線或是否被擋，然後重新整理頁面。`);
+            document.getElementById('processBtn').disabled = true;
+        }
+    });
     let uploadedFiles = [];
     let processedPdfBytes = null;
     let coverImageFile = null; // 儲存上傳的封面檔案
@@ -182,7 +203,7 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
         const uploadSection = document.getElementById('uploadSection');
 
         if (uploadedFiles.length > 0) {
-            processBtn.disabled = false;
+            processBtn.disabled = missingDeps.length > 0;
             fileCount.textContent = `已選擇 ${uploadedFiles.length} 個檔案`;
             uploadColumn.className = 'column is-6-wide mobile:is-fluid';
             fileListColumn.className = 'column is-fluid';
@@ -391,6 +412,9 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
                 canRenderUnicode = true;
             } catch (error) {
                 console.warn('無法載入中文字型，退回 WinAnsi (不支援中文):', error);
+                showNotice('warning', '中文字型載入失敗',
+                    '伺服器 fonts/ 與 Google Fonts 都讀不到 Noto Sans TC，封面、目錄的中文字會被略過。' +
+                    '請確認伺服器可連外並開啟 allow_url_fopen，或手動下載字型放到 fonts/（見 README）。');
                 customFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
                 customFontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
                 canRenderUnicode = false;
@@ -918,6 +942,11 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
             </div>
             <div class="ts-text is-secondary">
                 PDF 合併排版工具，可設定多頁、增加封面與目錄、頁碼，方便列印簡報講義
+            </div>
+
+            <div id="appNotice" class="ts-notice has-hidden">
+                <div class="title"></div>
+                <div class="content"></div>
             </div>
 
             <div class="ts-divider has-vertically-spaced"></div>

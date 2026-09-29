@@ -66,6 +66,15 @@ cd hapbun
 
 3. 直接訪問 `index.php`
 
+4. 安裝中文字型（`fonts/` 不進版本控制）：執行 `php install_font.php`，或用瀏覽器開啟 `install_font.php` 看 JSON 結果。需要 PHP 開啟 `allow_url_fopen` 與 `openssl` 擴充套件；失敗時會在結果中寫明原因（例如 `openssl_extension_missing`）
+
+### 更新部署
+
+在伺服器上的專案目錄執行 `./deploy.sh`：確認沒有未提交的本機修改，抓遠端 `main`，**合併前**用 `php -l` 檢查新增／修改的 PHP 檔語法（有錯就中止），快轉更新後**檢查字型依賴**：`fonts/` 缺字型時會列出環境問題（`allow_url_fopen`、`openssl`、目錄權限），互動終端會詢問是否立即下載（先用 `install_font.php`，失敗再改用 `curl`），非互動執行則印出安裝指令。缺字型不會讓部署失敗，瀏覽器端仍會 fallback 到 Google Fonts。
+
+- `DEPLOY_BRANCH`：要部署的分支，預設 `main`
+- `DEPLOY_RELOAD_CMD`：更新後要執行的指令，例如 `DEPLOY_RELOAD_CMD="systemctl reload php8.3-fpm" ./deploy.sh`
+
 ### 與 KoiLiSu 開利手整合
 
 1. 將此 repo 放置在 `koilisu/apps/hapbun/` 目錄
@@ -86,11 +95,14 @@ pdf-lib 預設僅支援 WinAnsi 編碼（Helvetica 等標準字型），無法�
 2. **字型載入策略**（`loadFontBytes`）：優先從伺服器本地 `fonts/` 目錄讀取；若不存在則 fallback 至 CDN
    - `fonts.gstatic.com` 支援 CORS，可直接從瀏覽器 fetch
 
-3. **伺服器端字型安裝**（`install_font.php`）：頁面載入時靜默呼叫，自動下載字型至 `fonts/` 目錄快取
+3. **伺服器端字型安裝**（`install_font.php`）：每次合併時於背景呼叫，自動下載字型至 `fonts/` 目錄快取（`fonts/` 不進版本控制）
    - 使用 PHP `file_get_contents`，不依賴 curl
    - 需確認 `allow_url_fopen = On`
+   - 也可直接開啟 `/koilisu/hapbun/install_font.php` 看安裝結果（JSON），或手動把上述兩個 TTF 下載到 `fonts/`
 
-4. **WinAnsi 安全防護**（`ensureWinAnsi`）：若字型載入失敗則 fallback 至 Helvetica，同時過濾非 WinAnsi 字元，避免 pdf-lib 拋出編碼錯誤
+4. **WinAnsi 安全防護**（`ensureWinAnsi`）：若字型載入失敗則 fallback 至 Helvetica，同時過濾非 WinAnsi 字元，避免 pdf-lib 拋出編碼錯誤，並在頁面上顯示警告
+
+5. **CDN 依賴檢查**：pdf-lib、fontkit、downloadjs 任一載入失敗時，頁面頂端顯示錯誤提示並停用「處理」按鈕，不會整頁無回應
 
 ## 使用的開源函式庫
 
