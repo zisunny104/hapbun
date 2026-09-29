@@ -70,9 +70,9 @@ cd hapbun
 
 ### 更新部署
 
-在伺服器上的專案目錄執行 `./deploy.sh`：確認沒有未提交的本機修改，抓遠端 `main`，**合併前**用 `php -l` 檢查新增／修改的 PHP 檔語法（有錯就中止），快轉更新後**檢查字型依賴**：`fonts/` 缺字型時會列出環境問題（`allow_url_fopen`、`openssl`、目錄權限），互動終端會詢問是否立即下載（先用 `install_font.php`，失敗再改用 `curl`），非互動執行則印出安裝指令。缺字型不會讓部署失敗，瀏覽器端仍會 fallback 到 Google Fonts。
+在伺服器上的專案目錄執行 `./deploy.sh`：確認沒有未 commit 的修改，fetch remote `main`，**merge 前**用 `php -l` 檢查新增／修改的 PHP 檔語法（有錯就中止），fast-forward 更新後**檢查字型依賴**：`fonts/` 缺字型時會列出環境問題（`allow_url_fopen`、`openssl`、目錄權限），互動終端會詢問是否立即下載（先用 `install_font.php`，失敗再改用 `curl`），非互動執行則印出安裝指令。缺字型不會讓部署失敗，瀏覽器端仍會 fallback 到 Google Fonts。
 
-- `DEPLOY_BRANCH`：要部署的分支，預設 `main`
+- `DEPLOY_BRANCH`：要部署的 branch，預設 `main`
 - `DEPLOY_RELOAD_CMD`：更新後要執行的指令，例如 `DEPLOY_RELOAD_CMD="systemctl reload php8.3-fpm" ./deploy.sh`
 
 ### 與 KoiLiSu 開利手整合
