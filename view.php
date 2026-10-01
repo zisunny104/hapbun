@@ -112,12 +112,37 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
         outline-offset: -2px;
     }
 
-    /* 頁尾 License 鈕是 <button>，需重置原生按鈕樣式讓 .ts-badge 的 pill 外觀生效 */
-    #btn-license.ts-badge {
-        appearance: none;
-        border: 0;
-        font: inherit;
-        cursor: pointer;
+    .footer-plain-link {
+        display: inline-block;
+        min-height: 24px;
+        line-height: 24px;
+        color: inherit;
+        text-decoration: none;
+    }
+
+    /* 顏色不可寫死色碼，沿用 .ts-button 的 light-dark() 預設色，深色模式才不會融進背景。
+       選擇器要寫 .ts-button.footer-action-button（而非單純 .footer-action-button），
+       權重才贏得過原生 .ts-button.is-small，不然 --height／font-size 會被蓋掉。 */
+    .ts-button.footer-action-button {
+        --height: 24px;
+        min-width: 0;
+        padding: 0 .65em;
+        border-width: 1px;
+        font-size: .8em;
+    }
+
+    /* Tocas 的 .ts-selection 無直向堆疊版型，手機寬度下改垂直排列並重設高度/圓角 */
+    .ts-selection.theme-switcher-stacked {
+        flex-direction: column;
+        height: auto;
+        align-items: stretch;
+        gap: 0.2rem;
+        padding: 0.35rem;
+        border-radius: var(--ts-border-radius-container, 8px);
+    }
+
+    .ts-selection.theme-switcher-stacked .item .text {
+        width: 100%;
     }
     </style>
     <script id="clientEventHandlersJS" language="javascript" type="text/javascript">
@@ -1534,42 +1559,46 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
         </div>
     </dialog>
 
-    <!-- 開利手底部 -->
     <div id="app-footer" class="ts-content is-secondary is-vertically-padded">
-        <div class="ts-container">
-            <div class="ts-grid mobile:is-stacked">
+        <div class="ts-container is-fluid">
+            <div class="ts-grid">
                 <div class="column is-fluid">
-                    <div class="ts-text is-description">
-                        <a href="/koilisu/">KoiLiSu 開利手</a> -
-                        讓工具使用更順手的開放專案 | prjToka
-                    </div>
-                    <div class="ts-text is-description">
-                        Built with ❤️ using Tocas UI |
-                        <a href="https://github.com/zisunny104/hapbun" target="_blank" rel="noopener noreferrer"
-                            class="ts-badge">
-                            <span class="ts-icon is-github-icon" aria-hidden="true"></span>
-                            View on GitHub<span class="sr-only"> (在新視窗開啟)</span>
-                        </a>
-                        <button type="button" id="btn-license" class="ts-badge">
-                            <span class="ts-icon is-copyright-icon" aria-hidden="true"></span>
-                            License
-                        </button>
+                    <div class="ts-wrap is-vertical is-compact">
+                        <div class="ts-text is-description">
+                            <a href="/koilisu/" class="footer-plain-link">KoiLiSu 開利手</a> -
+                            讓工具使用更順手的開放專案 | <a href="https://toka.dev" target="_blank" rel="noopener" class="footer-plain-link">prjToka</a>
+                        </div>
+                        <div class="ts-wrap is-middle-aligned is-compact">
+                            <button type="button" id="btn-license" class="ts-button is-small is-start-icon footer-action-button">
+                                <span class="ts-icon is-copyright-icon" aria-hidden="true"></span>
+                                License
+                            </button>
+                            <span class="ts-text is-description">|</span>
+                            <a href="https://github.com/zisunny104/hapbun" target="_blank" rel="noopener noreferrer" class="ts-button is-small is-start-icon footer-action-button">
+                                <svg class="ts-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                                </svg>
+                                View on GitHub<span class="sr-only"> (在新視窗開啟)</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
                 <div class="column is-end-aligned">
-                    <div class="ts-selection is-circular is-compact" role="radiogroup" aria-label="佈景主題切換">
-                        <label class="item">
-                            <input type="radio" name="theme" value="light" id="theme-light">
-                            <div class="text">淺色</div>
-                        </label>
-                        <label class="item">
-                            <input checked type="radio" name="theme" value="system" id="theme-system">
-                            <div class="text">系統</div>
-                        </label>
-                        <label class="item">
-                            <input type="radio" name="theme" value="dark" id="theme-dark">
-                            <div class="text">深色</div>
-                        </label>
+                    <div class="ts-wrap is-top-aligned" style="height:100%">
+                        <div class="ts-selection is-circular is-compact mobile:theme-switcher-stacked" role="radiogroup" aria-label="佈景主題切換">
+                            <label class="item">
+                                <input type="radio" name="theme" value="light" id="theme-light">
+                                <div class="text">淺色</div>
+                            </label>
+                            <label class="item">
+                                <input checked type="radio" name="theme" value="system" id="theme-system">
+                                <div class="text">系統</div>
+                            </label>
+                            <label class="item">
+                                <input type="radio" name="theme" value="dark" id="theme-dark">
+                                <div class="text">深色</div>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1580,8 +1609,7 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
     // 「授權」modal：兩個固定分頁，第一次開啟時平行載入對應檔案並轉成 HTML。
     // LICENSE 維持純英文官方範本（供 GitHub 授權徽章偵測），中文譯文與第三方元件各自分檔，
     // 這樣才不會干擾 GitHub 對 LICENSE 內容的自動比對。載入失敗只顯示簡短錯誤，不留空白。
-    // hapbun 是單檔 view.php（無模組化檔案結構），這裡用 IIFE 自足、不用 ES module，
-    // 整段 port 自 printan 的 js/help/markdown.js 與 js/help/license-dialog.js。
+    // 單檔 view.php（無模組化檔案結構），這裡用 IIFE 自足、不用 ES module。
     (function () {
         // ---- Markdown 轉換（只支援 LICENSE 用到的語法）----
         // 安全：先把整段文字跳脫（& < > " '）再套標記，來源裡的 HTML 一律當純文字；
