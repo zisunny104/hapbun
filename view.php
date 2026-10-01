@@ -522,6 +522,17 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
             const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
             const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
+            // 快取已解析的來源 PDF：目錄頁計算頁數與合併階段會讀取同一批檔案，
+            // 避免每個檔案被 arrayBuffer()＋PDFDocument.load() 各解析一次（大檔案時明顯拖慢處理速度）
+            const srcDocCache = new Map();
+            async function getSrcDoc(fileIndex) {
+                if (!srcDocCache.has(fileIndex)) {
+                    const arrayBuffer = await uploadedFiles[fileIndex].arrayBuffer();
+                    srcDocCache.set(fileIndex, await PDFDocument.load(arrayBuffer));
+                }
+                return srcDocCache.get(fileIndex);
+            }
+
             // 取得封面和目錄設定
             const enableCover = document.getElementById('enableCover')?.checked || false;
             const enableToc = document.getElementById('enableToc')?.checked || false;
@@ -650,9 +661,7 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
                 // 計算每個檔案的頁數，以得到實際合併後的頁碼
                 const filePageCounts = [];
                 for (let fileIndex = startFileIndex; fileIndex < uploadedFiles.length; fileIndex++) {
-                    const file = uploadedFiles[fileIndex];
-                    const arrayBuffer = await file.arrayBuffer();
-                    const srcDoc = await PDFDocument.load(arrayBuffer);
+                    const srcDoc = await getSrcDoc(fileIndex);
                     filePageCounts.push(srcDoc.getPageCount());
                 }
 
@@ -743,9 +752,7 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
             let sheetCount = 0;
 
             for (let fileIndex = startFileIndex; fileIndex < uploadedFiles.length; fileIndex++) {
-                const file = uploadedFiles[fileIndex];
-                const arrayBuffer = await file.arrayBuffer();
-                const srcDoc = await PDFDocument.load(arrayBuffer);
+                const srcDoc = await getSrcDoc(fileIndex);
                 const srcPages = await pdfDoc.embedPages(srcDoc.getPages());
 
                 let currentSheet = null;
@@ -941,12 +948,18 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
         element.addEventListener('dragover', function(e) {
             e.preventDefault();
             if (draggedElement && draggedElement !== this) {
-                const sortableList = document.getElementById('sortableFileList');
-                const allCards = [...sortableList.children];
+                // dragover 在停留期間會高頻連續觸發；用 this.parentNode 取代 DOM 查詢，
+                // 且已在正確位置時直接跳過，避免每次觸發都重排 DOM／搬動陣列
+                const allCards = [...this.parentNode.children];
                 const draggedIndex = allCards.indexOf(draggedElement);
                 const targetIndex = allCards.indexOf(this);
+                const movingForward = draggedIndex < targetIndex;
+                const alreadyInPlace = movingForward ?
+                    (draggedElement.previousSibling === this) :
+                    (draggedElement.nextSibling === this);
+                if (alreadyInPlace) return;
 
-                if (draggedIndex < targetIndex) {
+                if (movingForward) {
                     this.parentNode.insertBefore(draggedElement, this.nextSibling);
                 } else {
                     this.parentNode.insertBefore(draggedElement, this);
@@ -1843,7 +1856,7 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
             `is-rounded is-${theme}`;
 
         // Save theme preference to cookie
-        document.cookie = `preferred-theme=${theme}; path=/; max-age=31536000`; // 1 year
+        document.cookie = `preferred-theme=${theme}; path=/; max-age=31536000; SameSite=Lax`; // 1 year
     }
 
     function getPreferredTheme() {
