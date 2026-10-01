@@ -20,6 +20,12 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
     <script src="https://unpkg.com/downloadjs@1.4.7/download.min.js"></script>
 
     <style type="text/css">
+    /* Tocas 沒有能取消繼承粗體的 utility；.ts-header.is-heavy 的 font-weight:700 會
+       往下傳給版本號，這裡只補這一個屬性，其餘樣式（字級、顏色、間距）都交給 Tocas class。 */
+    .app-version {
+        font-weight: normal;
+    }
+
     body {
         display: flex;
         flex-direction: column;
@@ -249,7 +255,7 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
                     </div>
                 </div>
             `;
-        // 檔名／標題／檔案大小含使用者可控字串，一律以 textContent／value 屬性賦值，
+        // 檔名／標題／檔案大小含使用者可控字串，一律以 textContent／value 屬性指定，
         // 不經過 innerHTML／inline onclick 字串拼接，避免惡意檔名（如含 <img onerror> 或引號）造成 DOM XSS。
         fileCard.querySelector('[data-role="filename"]').textContent = file.name;
         fileCard.querySelector('.file-title').value = file.name.replace('.pdf', '');
@@ -795,7 +801,7 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
                 }
 
                 // 如果該檔案結束時沒填滿最後一頁，則下個檔案從新頁開始
-                // （已經通過pageIndexOnSheet重置實現）
+                // （已經透過 pageIndexOnSheet 重置處理）
             }
 
             // 繪製頁碼（最後疊加，確保在所有內容之上）
@@ -1027,12 +1033,14 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
         <div class="ts-container has-vertically-padded">
 
             <!-- 標題 -->
-            <div class="ts-header is-heavy is-large is-start-icon">
-                <span class="ts-icon is-file-pdf-icon"></span>
-                HapBun 合本 <span
-                    style="font-size:0.875rem;color:var(--ts-gray-500);font-weight:normal;margin-left:0.5rem;">v<?= htmlspecialchars($appVersion) ?></span>
+            <div class="ts-wrap is-middle-aligned is-compact">
+                <div class="ts-header is-heavy is-large is-start-icon" role="heading" aria-level="1">
+                    <span class="ts-icon is-file-pdf-icon" aria-hidden="true"></span>
+                    HapBun 合本
+                </div>
+                <span class="ts-text is-description">v<?= htmlspecialchars($appVersion) ?></span>
             </div>
-            <div class="ts-text is-secondary">
+            <div class="ts-text is-description mobile:has-hidden">
                 PDF 合併排版工具，可設定多頁、增加封面與目錄、頁碼，方便列印簡報講義
             </div>
 
@@ -1456,7 +1464,7 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
                         </div>
                     </div>
                 `;
-            // title 是使用者可編輯的章節標題（可能源自檔名），以 value 屬性賦值避免 DOM XSS
+            // title 是使用者可編輯的章節標題（可能源自檔名），以 value 屬性指定避免 DOM XSS
             item.querySelector('.toc-title-input').value = title;
 
             // 拖動事件

@@ -122,7 +122,7 @@ pdf-lib 預設僅支援 WinAnsi 編碼（Helvetica 等標準字型），無法�
 **專案**：KoiLiSu 開利手
 **網址**：https://toka.dev/koilisu/hapbun
 
-## 更新日誌
+## 更新記錄
 
 ### v1.0.5 (2026-10-01)
 
@@ -132,7 +132,7 @@ pdf-lib 預設僅支援 WinAnsi 編碼（Helvetica 等標準字型），無法�
 
 ### v1.0.4 (2026-03-11)
 
-- 修正字體與頁碼顯示問題
+- 修正字型與頁碼顯示問題
   - 前端改為載入靜態 TTF（Regular + Bold），修正 variable font 導致字重過細的問題
   - 修正伺服器端 `install_font.php` 與字型快取機制，確保 Noto Sans TC 可正確下載與使用
   - 目錄（TOC）字元寬度量測與點線對齊修正，加入目錄項目自動換行避免遮擋頁碼
