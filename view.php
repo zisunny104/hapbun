@@ -52,6 +52,73 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
         background: var(--ts-primary-50);
         border-color: var(--ts-primary-400);
     }
+
+    /* ---- 無障礙：僅供螢幕閱讀器讀出的文字（沿用 KoiLiSu common/header.php 慣例） ---- */
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    /* ==== 授權（License）彈窗：Tocas UI 沒有直接對應的版面元件，僅保留固定高度／捲動這類
+       佈局必要的最小樣式，內文標記（表格、清單、段落…）一律交給 Tocas 原生 class。 ==== */
+    .help-dialog-content {
+        display: flex;
+        flex-direction: column;
+        /* 固定高度：切換章節時分頁列與關閉鈕位置不跳動，內文不夠長時底下留白 */
+        height: min(40rem, calc(100dvh - 3rem));
+    }
+
+    .help-body {
+        flex: 1 1 auto;
+        min-height: 12rem;
+        overflow-y: auto;
+        overflow-wrap: anywhere; /* LICENSE 轉出的內容可能含長字串（網址、路徑），需要可以換行 */
+    }
+
+    .help-body kbd {
+        white-space: nowrap;
+    }
+
+    /* Tocas 沒有專門的引言元件，用 .ts-text.is-description + is-italic 模擬，僅額外保留左側框線辨識 */
+    .help-quote {
+        margin: 0;
+        padding-left: .75rem;
+        border-left: 2px solid var(--ts-gray-300, #ddd);
+    }
+
+    /* 分頁是 <button>（鍵盤可聚焦），外觀維持 Tocas 的 .ts-tab .item，章節一多就換行 */
+    .ts-tab.help-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        height: auto;
+        margin: 0 1rem;
+    }
+
+    .ts-tab.help-tabs > button.item {
+        appearance: none;
+        border: 0;
+        font: inherit;
+    }
+
+    .ts-tab.help-tabs > button.item:focus-visible {
+        outline: 2px solid light-dark(#1d4ed8, #93c5fd);
+        outline-offset: -2px;
+    }
+
+    /* 頁尾 License 鈕是 <button>，需重置原生按鈕樣式讓 .ts-badge 的 pill 外觀生效 */
+    #btn-license.ts-badge {
+        appearance: none;
+        border: 0;
+        font: inherit;
+        cursor: pointer;
+    }
     </style>
     <script id="clientEventHandlersJS" language="javascript" type="text/javascript">
     // CDN 函式庫載入失敗時不直接丟 ReferenceError 讓整頁失效，改在頁面上提示並停用處理鈕
@@ -1443,30 +1510,53 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
     }
     </script>
 
+    <!-- 授權內容讀根目錄 LICENSE，由下方 inline script 第一次開啟時載入，每章一個分頁。 -->
+    <dialog id="license-dialog" class="ts-modal is-large" aria-labelledby="license-dialog-title"
+        data-license-src="<?= htmlspecialchars($appBasePath) ?>/LICENSE">
+        <div class="content help-dialog-content">
+            <div class="ts-content">
+                <div class="ts-header is-start-icon" id="license-dialog-title">
+                    <span class="ts-icon is-copyright-icon" aria-hidden="true"></span>
+                    授權
+                </div>
+            </div>
+            <div class="ts-tab is-dense is-segmented help-tabs" role="tablist"></div>
+            <div class="ts-content help-body">
+                <div class="ts-text is-description">載入中…</div>
+            </div>
+            <div class="ts-divider"></div>
+            <div class="ts-content">
+                <div class="ts-wrap is-end-aligned">
+                    <button type="button" class="ts-button" id="btn-license-close">關閉</button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
     <!-- 開利手底部 -->
-    <div class="ts-content is-secondary is-vertically-padded">
+    <div id="app-footer" class="ts-content is-secondary is-vertically-padded">
         <div class="ts-container">
-            <div class="ts-grid">
+            <div class="ts-grid mobile:is-stacked">
                 <div class="column is-fluid">
                     <div class="ts-text is-description">
-                        <a href="/koilisu/" style="color: inherit; text-decoration: none;">KoiLiSu 開利手</a> -
+                        <a href="/koilisu/">KoiLiSu 開利手</a> -
                         讓工具使用更順手的開放專案 | prjToka
                     </div>
                     <div class="ts-text is-description">
                         Built with ❤️ using Tocas UI |
-                        <a href="https://github.com/zisunny104/hapbun" target="_blank"
-                            style="display: inline-block; padding: 2px 8px; background: #24292f; color: white; text-decoration: none; border-radius: 6px; font-size: 0.85em; font-weight: 500; margin-left: 4px;">
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"
-                                style="vertical-align: text-bottom; margin-right: 4px;">
-                                <path
-                                    d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-                            </svg>
-                            View on GitHub
+                        <a href="https://github.com/zisunny104/hapbun" target="_blank" rel="noopener noreferrer"
+                            class="ts-badge">
+                            <span class="ts-icon is-github-icon" aria-hidden="true"></span>
+                            View on GitHub<span class="sr-only"> (在新視窗開啟)</span>
                         </a>
+                        <button type="button" id="btn-license" class="ts-badge">
+                            <span class="ts-icon is-copyright-icon" aria-hidden="true"></span>
+                            License
+                        </button>
                     </div>
                 </div>
                 <div class="column is-end-aligned">
-                    <div class="ts-selection is-circular is-compact">
+                    <div class="ts-selection is-circular is-compact" role="radiogroup" aria-label="佈景主題切換">
                         <label class="item">
                             <input type="radio" name="theme" value="light" id="theme-light">
                             <div class="text">淺色</div>
@@ -1484,6 +1574,231 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
             </div>
         </div>
     </div>
+
+    <script>
+    // 「授權」彈窗：內文讀根目錄 LICENSE（Markdown，以 ## 分章），第一次開啟時載入並轉成 HTML，
+    // 每章一個分頁。載入失敗只顯示簡短錯誤，不留空白。
+    // hapbun 是單檔 view.php（無模組化檔案結構），這裡用 IIFE 自足、不用 ES module，
+    // 整段 port 自 printan 的 js/help/markdown.js 與 js/help/license-dialog.js。
+    (function () {
+        // ---- Markdown 轉換（只支援 LICENSE 用到的語法）----
+        // 安全：先把整段文字跳脫（& < > " '）再套標記，來源裡的 HTML 一律當純文字；
+        // 連結只允許 http(s):// 與相對路徑（含 # 錨點），其餘（javascript:、data: …）不轉成連結。
+        var ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+        function escapeHtml(s) {
+            return s.replace(/[&<>"']/g, function (c) { return ESCAPES[c]; });
+        }
+        var ENTITY_CHARS = { quot: '"', '#39': "'", amp: '&' };
+        var HOLD = '\u0000'; // 暫存已轉好的 HTML 用的占位符；輸入裡的 NUL 會先移除，來源文字無法偽造
+
+        function safeHref(url) {
+            if (/^https?:\/\/\S+$/i.test(url)) return url;
+            if (/^[\w./#?=&%-]+$/.test(url) && url.indexOf('//') !== 0 && !/^[a-z][a-z0-9+.-]*:/i.test(url)) return url;
+            return null;
+        }
+
+        // 行內標記。輸入是原始文字，輸出已跳脫的 HTML。
+        function renderInline(raw) {
+            var held = [];
+            function hold(html) { return HOLD + (held.push(html) - 1) + HOLD; }
+            var s = escapeHtml(raw.split(HOLD).join(''));
+            s = s.replace(/`([^`]{1,500})`/g, function (_, code) { return hold('<kbd>' + code + '</kbd>'); });
+            s = s.replace(/\[\[([^\]]{1,50})\]\]/g, function (_, key) { return hold('<kbd>' + key + '</kbd>'); });
+            s = s.replace(/\[([^\]]{1,300})\]\(([^)\s]{1,500})\)/g, function (_, label, url) {
+                var href = safeHref(url.replace(/&(quot|#39|amp);/g, function (_m, e) { return ENTITY_CHARS[e]; }));
+                if (!href) return label;
+                var external = /^https?:/i.test(href) ? ' target="_blank" rel="noopener noreferrer"' : '';
+                return hold('<a href="' + escapeHtml(href) + '"' + external + '>' + label + '</a>');
+            });
+            s = s.replace(/\*\*([^*]{1,500})\*\*/g, '<strong>$1</strong>');
+            s = s.replace(/\*([^*]{1,500})\*/g, '<em>$1</em>');
+            return s.replace(new RegExp(HOLD + '(\\d+)' + HOLD, 'g'), function (_, i) { return held[Number(i)]; });
+        }
+
+        function splitRow(line) {
+            return line.trim().replace(/^\||\|$/g, '').split('|').map(function (c) { return c.trim(); });
+        }
+        var isTableSep = function (line) { return /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(line); };
+        var BULLET = /^\s*[-*]\s+/;
+        var NUMBERED = /^\s*\d+[.)]\s+/;
+
+        // 區塊層級：回傳 HTML 字串。表格用 Tocas 原生 .ts-table、清單用 .ts-list，
+        // 一般段落不特別加 class（沿用對話框內文字基礎樣式）。
+        function renderMarkdown(src) {
+            var lines = src.replace(/\r\n?/g, '\n').split('\n');
+            var out = [];
+            var i = 0;
+            while (i < lines.length) {
+                var line = lines[i];
+                if (!line.trim()) { i++; continue; }
+
+                var heading = /^#{3,4}\s+(.*)$/.exec(line);
+                if (heading) {
+                    out.push('<div class="ts-header is-small">' + renderInline(heading[1]) + '</div>');
+                    i++;
+                } else if (/^---+\s*$/.test(line)) {
+                    out.push('<div class="ts-divider"></div>');
+                    i++;
+                } else if (line.indexOf('|') !== -1 && isTableSep(lines[i + 1] || '')) {
+                    var head = splitRow(line);
+                    i += 2;
+                    var rows = [];
+                    while (i < lines.length && lines[i].trim() && lines[i].indexOf('|') !== -1) rows.push(splitRow(lines[i++]));
+                    var th = head.map(function (c) { return '<th>' + renderInline(c) + '</th>'; }).join('');
+                    var tr = rows.map(function (r) {
+                        return '<tr>' + head.map(function (_, k) { return '<td>' + renderInline(r[k] || '') + '</td>'; }).join('') + '</tr>';
+                    }).join('');
+                    out.push('<table class="ts-table is-celled"><thead><tr>' + th + '</tr></thead><tbody>' + tr + '</tbody></table>');
+                } else if (BULLET.test(line) || NUMBERED.test(line)) {
+                    var marker = BULLET.test(line) ? BULLET : NUMBERED;
+                    var tag = marker === BULLET ? 'ul' : 'ol';
+                    var items = [];
+                    while (i < lines.length && marker.test(lines[i])) items.push(lines[i++].replace(marker, ''));
+                    out.push('<' + tag + ' class="ts-list">' + items.map(function (t) { return '<li>' + renderInline(t) + '</li>'; }).join('') + '</' + tag + '>');
+                } else if (/^>\s?/.test(line)) {
+                    var quote = [];
+                    while (i < lines.length && /^>\s?/.test(lines[i])) quote.push(lines[i++].replace(/^>\s?/, ''));
+                    out.push('<blockquote class="help-quote ts-text is-description is-italic">' + renderInline(quote.join(' ')) + '</blockquote>');
+                } else {
+                    var para = [lines[i++]];
+                    while (i < lines.length && lines[i].trim() && !/^(#{3,4}\s|---+\s*$|>\s?)/.test(lines[i]) && !BULLET.test(lines[i]) && !NUMBERED.test(lines[i])) para.push(lines[i++]);
+                    out.push('<p>' + renderInline(para.join(' ')) + '</p>');
+                }
+            }
+            return out.join('');
+        }
+
+        // 以 `## 章名` 切成章節：[{ title, body(原始 Markdown) }]；第一個 ## 之前的文字忽略。
+        function splitChapters(src) {
+            var chapters = [];
+            src.replace(/\r\n?/g, '\n').split('\n').forEach(function (line) {
+                var m = /^##\s+(.+?)\s*$/.exec(line);
+                if (m) {
+                    chapters.push({ title: m[1], body: '' });
+                } else if (chapters.length) {
+                    chapters[chapters.length - 1].body += line + '\n';
+                }
+            });
+            return chapters;
+        }
+
+        // ---- 「授權」dialog 開關、分頁、lazy fetch ----
+        function wireLicenseDialog() {
+            var dialog = document.getElementById('license-dialog');
+            var openButton = document.getElementById('btn-license');
+            if (!dialog || !openButton) return;
+            var tabsBox = dialog.querySelector('.help-tabs');
+            var body = dialog.querySelector('.help-body');
+            var src = dialog.dataset.licenseSrc;
+            var loaded = false;
+            var loading = null;
+
+            function showError() {
+                tabsBox.hidden = true;
+                if (dialog.open) { var closeBtn = document.getElementById('btn-license-close'); if (closeBtn) closeBtn.focus(); }
+                body.textContent = '';
+                var notice = document.createElement('div');
+                notice.className = 'ts-notice is-negative';
+                var content = document.createElement('div');
+                content.className = 'content';
+                content.textContent = '授權資訊載入失敗，請關閉後再開一次。';
+                notice.appendChild(content);
+                body.appendChild(notice);
+            }
+
+            function select(name, opts) {
+                opts = opts || {};
+                Array.prototype.forEach.call(tabsBox.children, function (tab) {
+                    var active = tab.dataset.licenseTab === name;
+                    tab.classList.toggle('is-active', active);
+                    tab.setAttribute('aria-selected', String(active));
+                    tab.tabIndex = active ? 0 : -1; // roving tabindex：Tab 只停在目前分頁，方向鍵切換
+                    if (active && opts.focus) tab.focus();
+                });
+                Array.prototype.forEach.call(body.children, function (panel) {
+                    panel.hidden = panel.dataset.licensePanel !== name;
+                });
+                body.scrollTop = 0;
+            }
+
+            tabsBox.addEventListener('keydown', function (e) {
+                var tabs = Array.prototype.slice.call(tabsBox.children);
+                var current = tabs.indexOf(document.activeElement);
+                if (current < 0) return;
+                var map = { ArrowRight: current + 1, ArrowLeft: current - 1, Home: 0, End: tabs.length - 1 };
+                var next = map[e.key];
+                if (next === undefined) return;
+                e.preventDefault();
+                select(String(((next % tabs.length) + tabs.length) % tabs.length), { focus: true });
+            });
+
+            function build(chapters) {
+                tabsBox.hidden = false;
+                tabsBox.textContent = '';
+                body.textContent = '';
+                chapters.forEach(function (chapter, index) {
+                    var name = String(index);
+                    var tab = document.createElement('button');
+                    tab.type = 'button';
+                    tab.className = 'item';
+                    tab.id = 'license-tab-' + name;
+                    tab.setAttribute('role', 'tab');
+                    tab.setAttribute('aria-controls', 'license-panel-' + name);
+                    tab.dataset.licenseTab = name;
+                    tab.textContent = chapter.title;
+                    tab.addEventListener('click', function () { select(name); });
+                    tabsBox.appendChild(tab);
+                    var panel = document.createElement('div');
+                    panel.id = 'license-panel-' + name;
+                    panel.setAttribute('role', 'tabpanel');
+                    panel.setAttribute('aria-labelledby', 'license-tab-' + name);
+                    panel.dataset.licensePanel = name;
+                    panel.innerHTML = renderMarkdown(chapter.body); // 已先跳脫再套標記
+                    body.appendChild(panel);
+                });
+                select('0');
+                loaded = true;
+            }
+
+            function load() {
+                if (loaded || loading) return;
+                loading = fetch(src)
+                    .then(function (res) {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.text();
+                    })
+                    .then(function (text) {
+                        var chapters = splitChapters(text);
+                        if (!chapters.length) throw new Error('沒有章節');
+                        build(chapters);
+                        if (dialog.open) {
+                            var activeTab = tabsBox.querySelector('[tabindex="0"]');
+                            if (activeTab) activeTab.focus();
+                        }
+                    })
+                    .catch(function (err) {
+                        console.error('授權資訊載入失敗', err);
+                        showError();
+                    })
+                    .then(function () { loading = null; }, function () { loading = null; });
+            }
+
+            // 開啟時焦點放在目前分頁（還在載入或失敗時放在關閉鈕）；Esc 由 <dialog> 原生處理，
+            // 關閉後（Esc 或關閉鈕）焦點明確還給開啟鈕。
+            openButton.addEventListener('click', function () {
+                dialog.showModal();
+                load();
+                var target = tabsBox.querySelector('[tabindex="0"]') || document.getElementById('btn-license-close');
+                if (target) target.focus();
+            });
+            dialog.addEventListener('close', function () { openButton.focus(); });
+            var closeBtn = document.getElementById('btn-license-close');
+            if (closeBtn) closeBtn.addEventListener('click', function () { dialog.close(); });
+        }
+
+        document.addEventListener('DOMContentLoaded', wireLicenseDialog);
+    })();
+    </script>
 
     <script>
     // 深淺色模式功能

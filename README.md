@@ -117,12 +117,18 @@ pdf-lib 預設僅支援 WinAnsi 編碼（Helvetica 等標準字型），無法�
 
 ---
 
-**版本**：1.0.4
+**版本**：1.0.5
 **作者**：Tokas (Xiang-zi Xie)
 **專案**：KoiLiSu 開利手
 **網址**：https://toka.dev/koilisu/hapbun
 
 ## 更新日誌
+
+### v1.0.5 (2026-10-01)
+
+- 新增頁尾「授權」彈窗，內容讀取根目錄 `LICENSE`（分頁顯示 MIT License、第三方元件），比照 printan 的做法
+- 頁尾改用 Tocas UI 原生 `.ts-badge` 徽章取代自訂的 GitHub／License 按鈕樣式，移除對應 inline style
+- `LICENSE` 重整為 `## MIT License`（英文＋中文翻譯）、`## 第三方元件` 兩章節格式，法律文字內容不變
 
 ### v1.0.4 (2026-03-11)
 
