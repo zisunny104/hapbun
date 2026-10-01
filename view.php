@@ -1510,9 +1510,10 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
     }
     </script>
 
-    <!-- 授權內容讀根目錄 LICENSE，由下方 inline script 第一次開啟時載入，每章一個分頁。 -->
+    <!-- 「授權」modal：兩個固定分頁，由下方 inline script 第一次開啟時平行載入對應檔案並轉成 HTML。
+         LICENSE 維持純英文官方範本（供 GitHub 授權徽章偵測），中文譯文與第三方元件各自分檔。 -->
     <dialog id="license-dialog" class="ts-modal is-large" aria-labelledby="license-dialog-title"
-        data-license-src="<?= htmlspecialchars($appBasePath) ?>/LICENSE">
+        data-license-base="<?= htmlspecialchars($appBasePath) ?>">
         <div class="content help-dialog-content">
             <div class="ts-content">
                 <div class="ts-header is-start-icon" id="license-dialog-title">
@@ -1576,8 +1577,9 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
     </div>
 
     <script>
-    // 「授權」彈窗：內文讀根目錄 LICENSE（Markdown，以 ## 分章），第一次開啟時載入並轉成 HTML，
-    // 每章一個分頁。載入失敗只顯示簡短錯誤，不留空白。
+    // 「授權」modal：兩個固定分頁，第一次開啟時平行載入對應檔案並轉成 HTML。
+    // LICENSE 維持純英文官方範本（供 GitHub 授權徽章偵測），中文譯文與第三方元件各自分檔，
+    // 這樣才不會干擾 GitHub 對 LICENSE 內容的自動比對。載入失敗只顯示簡短錯誤，不留空白。
     // hapbun 是單檔 view.php（無模組化檔案結構），這裡用 IIFE 自足、不用 ES module，
     // 整段 port 自 printan 的 js/help/markdown.js 與 js/help/license-dialog.js。
     (function () {
@@ -1668,19 +1670,11 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
             return out.join('');
         }
 
-        // 以 `## 章名` 切成章節：[{ title, body(原始 Markdown) }]；第一個 ## 之前的文字忽略。
-        function splitChapters(src) {
-            var chapters = [];
-            src.replace(/\r\n?/g, '\n').split('\n').forEach(function (line) {
-                var m = /^##\s+(.+?)\s*$/.exec(line);
-                if (m) {
-                    chapters.push({ title: m[1], body: '' });
-                } else if (chapters.length) {
-                    chapters[chapters.length - 1].body += line + '\n';
-                }
-            });
-            return chapters;
-        }
+        // 固定兩個分頁：第一個合併英文正文＋中文譯文，第二個是第三方元件清單。
+        var LICENSE_TABS = [
+            { title: 'MIT License', files: ['LICENSE', 'LICENSE.zh-TW.md'] },
+            { title: '第三方元件', files: ['THIRD-PARTY-NOTICES.md'] },
+        ];
 
         // ---- 「授權」dialog 開關、分頁、lazy fetch ----
         function wireLicenseDialog() {
@@ -1689,7 +1683,7 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
             if (!dialog || !openButton) return;
             var tabsBox = dialog.querySelector('.help-tabs');
             var body = dialog.querySelector('.help-body');
-            var src = dialog.dataset.licenseSrc;
+            var base = dialog.dataset.licenseBase;
             var loaded = false;
             var loading = null;
 
@@ -1732,11 +1726,11 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
                 select(String(((next % tabs.length) + tabs.length) % tabs.length), { focus: true });
             });
 
-            function build(chapters) {
+            function build(bodies) {
                 tabsBox.hidden = false;
                 tabsBox.textContent = '';
                 body.textContent = '';
-                chapters.forEach(function (chapter, index) {
+                LICENSE_TABS.forEach(function (tabDef, index) {
                     var name = String(index);
                     var tab = document.createElement('button');
                     tab.type = 'button';
@@ -1745,7 +1739,7 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
                     tab.setAttribute('role', 'tab');
                     tab.setAttribute('aria-controls', 'license-panel-' + name);
                     tab.dataset.licenseTab = name;
-                    tab.textContent = chapter.title;
+                    tab.textContent = tabDef.title;
                     tab.addEventListener('click', function () { select(name); });
                     tabsBox.appendChild(tab);
                     var panel = document.createElement('div');
@@ -1753,7 +1747,7 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
                     panel.setAttribute('role', 'tabpanel');
                     panel.setAttribute('aria-labelledby', 'license-tab-' + name);
                     panel.dataset.licensePanel = name;
-                    panel.innerHTML = renderMarkdown(chapter.body); // 已先跳脫再套標記
+                    panel.innerHTML = bodies[index]; // 已先跳脫再套標記
                     body.appendChild(panel);
                 });
                 select('0');
@@ -1762,15 +1756,20 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
 
             function load() {
                 if (loaded || loading) return;
-                loading = fetch(src)
-                    .then(function (res) {
-                        if (!res.ok) throw new Error('HTTP ' + res.status);
-                        return res.text();
+                loading = Promise.all(
+                    LICENSE_TABS.map(function (tabDef) {
+                        return Promise.all(
+                            tabDef.files.map(function (file) {
+                                return fetch(base + '/' + file).then(function (res) {
+                                    if (!res.ok) throw new Error('HTTP ' + res.status + '（' + file + '）');
+                                    return res.text();
+                                });
+                            })
+                        ).then(function (texts) { return renderMarkdown(texts.join('\n\n---\n\n')); });
                     })
-                    .then(function (text) {
-                        var chapters = splitChapters(text);
-                        if (!chapters.length) throw new Error('沒有章節');
-                        build(chapters);
+                )
+                    .then(function (bodies) {
+                        build(bodies);
                         if (dialog.open) {
                             var activeTab = tabsBox.querySelector('[tabindex="0"]');
                             if (activeTab) activeTab.focus();
