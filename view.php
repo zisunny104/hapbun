@@ -158,11 +158,9 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
         ['fontkit', '@pdf-lib/fontkit'],
         ['download', 'downloadjs']
     ].filter(([globalName]) => typeof window[globalName] === 'undefined').map(([, name]) => name);
-    const {
-        PDFDocument,
-        rgb,
-        StandardFonts
-    } = window.PDFLib || {};
+    // PDFDocument 仍在主執行緒用於目錄編輯器讀取頁數；合併／繪製所需的 rgb、StandardFonts
+    // 已搬進 js/pdf-worker.js（worker 自行 importScripts 載入 pdf-lib，不依賴這裡的 window.PDFLib）
+    const { PDFDocument } = window.PDFLib || {};
 
     function showNotice(type, title, message) {
         const notice = document.getElementById('appNotice');
@@ -336,569 +334,80 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
         'B4': [728.5, 1031.8] // JIS B4
     };
 
-    // 處理 PDF 合併排版
+    // 處理 PDF 合併排版：重運算（檔案解析、合併、頁碼／目錄繪製）交給 js/pdf-worker.js 執行，
+    // 避免多檔案或大檔案時佔住主執行緒讓畫面卡死。這裡只負責收集設定值與檔案、
+    // 用 transferable objects 把 ArrayBuffer 丟給 worker，以及收到結果後更新預覽／下載按鈕。
     async function processPDF() {
         if (uploadedFiles.length === 0) {
             alert('請先上傳 PDF 檔案');
             return;
         }
 
-        // 顯示處理中狀態
         const overlay = document.getElementById('processingOverlay');
         overlay.classList.add('active');
 
+        let worker;
         try {
-            // 取得設定值
-            const pageSizeKey = document.getElementById('pageSize').value;
-            const orientation = document.getElementById('orientation').value;
-            const nUp = parseInt(document.getElementById('pagesPerSheet').value);
-            const gutterMm = parseFloat(document.getElementById('gutter').value || 10);
-            const gapMm = parseFloat(document.getElementById('gap').value || 5);
-            const drawBorder = document.getElementById('drawBorder').checked;
-            const pageNoPos = document.getElementById('pageNoPos').value;
-            const startNo = parseInt(document.getElementById('startPageNo').value || 1);
-            const pageNoOutline = document.getElementById('pageNoOutline').checked;
-            const pageNoOutlineWidth = parseFloat(document.getElementById('pageNoOutlineWidth').value || 2);
-            const pageNoStyle = document.getElementById('pageNoStyle')?.value || 'light';
+            const settings = {
+                pageSizeKey: document.getElementById('pageSize').value,
+                orientation: document.getElementById('orientation').value,
+                nUp: parseInt(document.getElementById('pagesPerSheet').value),
+                gutterMm: parseFloat(document.getElementById('gutter').value || 10),
+                gapMm: parseFloat(document.getElementById('gap').value || 5),
+                drawBorder: document.getElementById('drawBorder').checked,
+                pageNoPos: document.getElementById('pageNoPos').value,
+                startNo: parseInt(document.getElementById('startPageNo').value || 1),
+                pageNoOutline: document.getElementById('pageNoOutline').checked,
+                pageNoOutlineWidth: parseFloat(document.getElementById('pageNoOutlineWidth').value || 2),
+                pageNoStyle: document.getElementById('pageNoStyle')?.value || 'light',
+                enableCover: document.getElementById('enableCover')?.checked || false,
+                enableToc: document.getElementById('enableToc')?.checked || false,
+                coverSource: document.getElementById('coverSource')?.value || 'template',
+                coverTitle: document.getElementById('coverTitle')?.value || '',
+                coverSubtitle: document.getElementById('coverSubtitle')?.value || '',
+                fontBase: '<?= $appBasePath ?>'
+            };
 
-            // 計算頁面尺寸
-            let [pW, pH] = SIZES[pageSizeKey];
-            if (orientation === 'landscape') {
-                [pW, pH] = [pH, pW];
+            // 嘗試讓伺服器安裝字型（靜默失敗不影響後續流程，worker 內讀字型時本地沒有會再退回 CDN）
+            fetch('<?= $appBasePath ?>/install_font.php').catch(() => {});
+
+            // 檔案轉成 ArrayBuffer 連同章節標題交給 worker，用 transfer list 轉移所有權避免複製整份資料
+            const titleInputs = Array.from(document.querySelectorAll('.file-title'));
+            const files = await Promise.all(uploadedFiles.map(async (file, index) => ({
+                name: file.name,
+                title: titleInputs[index]?.value || '',
+                buffer: await file.arrayBuffer()
+            })));
+            const coverFile = (settings.coverSource === 'upload' && coverImageFile) ? {
+                name: coverImageFile.name,
+                buffer: await coverImageFile.arrayBuffer()
+            } : null;
+
+            worker = new Worker('<?= $appBasePath ?>/js/pdf-worker.js');
+            const transferList = files.map(f => f.buffer).concat(coverFile ? [coverFile.buffer] : []);
+            const result = await new Promise((resolve, reject) => {
+                worker.onmessage = (e) => resolve(e.data);
+                worker.onerror = (e) => reject(new Error(e.message || 'Worker 執行錯誤'));
+                worker.postMessage({ settings, files, coverFile }, transferList);
+            });
+
+            if (!result.success) {
+                throw new Error(result.error || 'PDF 處理失敗');
+            }
+            if (result.fontWarning) {
+                showNotice('warning', '中文字型載入失敗', result.fontWarning);
             }
 
-            const gutter = gutterMm * MM_TO_PT;
-            const gap = gapMm * MM_TO_PT;
-
-            // 定義 N-up 網格 (Rows, Cols)
-            let rows, cols;
-            if (orientation === 'portrait') {
-                if (nUp === 1) {
-                    rows = 1;
-                    cols = 1;
-                } else if (nUp === 2) {
-                    rows = 2;
-                    cols = 1;
-                } else if (nUp === 4) {
-                    rows = 2;
-                    cols = 2;
-                } else if (nUp === 6) {
-                    rows = 3;
-                    cols = 2;
-                }
-            } else {
-                if (nUp === 1) {
-                    rows = 1;
-                    cols = 1;
-                } else if (nUp === 2) {
-                    rows = 1;
-                    cols = 2;
-                } else if (nUp === 4) {
-                    rows = 2;
-                    cols = 2;
-                } else if (nUp === 6) {
-                    rows = 2;
-                    cols = 3;
-                }
-            }
-
-            // 建立新 PDF
-            const pdfDoc = await PDFDocument.create();
-
-            // 註冊 fontkit
-            pdfDoc.registerFontkit(fontkit);
-
-            // 載入中文字型（完整 TTF，先嘗試本地，若無再從 CDN 下載）
-            let customFont, customFontBold;
-            // 是否可以正確輸出 Unicode（非 WinAnsi）字元
-            let canRenderUnicode = true;
-
-            // 輔助：將非 WinAnsi 字元替換掉以避免 WinAnsi 編碼錯誤
-            function ensureWinAnsi(text) {
-                return String(text).replace(/[^\x00-\xFF]/g, '?');
-            }
-
-            // 輔助：量測混合文字寬度（ASCII 用 asciiFont、非 ASCII 用 cjkFont，逐字元累加）
-            // 直接用 CJK 字型量測 ASCII 字元會得到錯誤寬度，導致換行失效
-            function measureMixedWidth(text, cjkFont, asciiFont, size) {
-                let w = 0;
-                for (const char of String(text)) {
-                    w += (char.codePointAt(0) < 128 ? asciiFont : cjkFont).widthOfTextAtSize(char, size);
-                }
-                return w;
-            }
-
-            // 輔助：自動換行（以混合字型寬度量測，避免 CJK 字型誤報 ASCII 寬度）
-            function wrapMixed(text, cjkFont, asciiFont, size, maxWidth) {
-                const lines = [];
-                let current = '';
-                let currentW = 0;
-                for (const char of String(text)) {
-                    const charW = (char.codePointAt(0) < 128 ? asciiFont : cjkFont).widthOfTextAtSize(char, size);
-                    if (currentW + charW > maxWidth && current.length > 0) {
-                        lines.push(current);
-                        current = char;
-                        currentW = charW;
-                    } else {
-                        current += char;
-                        currentW += charW;
-                    }
-                }
-                if (current) lines.push(current);
-                return lines;
-            }
-
-            // 輔助：繪製混合文字，ASCII 用 asciiFont（確保 PDF 複製正確）、非 ASCII 用 cjkFont
-            // 回傳繪製總寬度
-            function drawMixedText(page, text, x, y, size, cjkFont, asciiFont, color) {
-                let curX = x;
-                let i = 0;
-                while (i < text.length) {
-                    const isAscii = text.codePointAt(i) < 128;
-                    let run = '';
-                    while (i < text.length) {
-                        const cp = text.codePointAt(i);
-                        if ((cp < 128) !== isAscii) break;
-                        const ch = String.fromCodePoint(cp);
-                        run += ch;
-                        i += ch.length;
-                    }
-                    const f = isAscii ? asciiFont : cjkFont;
-                    page.drawText(run, {
-                        x: curX,
-                        y,
-                        size,
-                        font: f,
-                        color
-                    });
-                    curX += f.widthOfTextAtSize(run, size);
-                }
-                return curX - x;
-            }
-
-            // 輔助：嘗試本地字型，若本地不存在則從 CDN 下載
-            async function loadFontBytes(localPath, cdnUrl) {
-                let resp = await fetch(localPath);
-                if (!resp.ok) {
-                    console.log(`本地字型 ${localPath} 不存在，改從 CDN 下載...`);
-                    resp = await fetch(cdnUrl);
-                    if (!resp.ok) throw new Error(`無法載入字型: ${cdnUrl}`);
-                }
-                return resp.arrayBuffer();
-            }
-
-            try {
-                // 嘗試讓伺服器安裝字型（靜默失敗不影響後續流程）
-                fetch('<?= $appBasePath ?>/install_font.php').catch(() => {});
-
-                // 使用靜態字重 TTF，避免 variable font 預設取最小字重（wght=100 超細）
-                console.log('載入中文字型 (Noto Sans TC Regular + Bold)...');
-                const [regularBytes, boldBytes] = await Promise.all([
-                    loadFontBytes(
-                        '<?= $appBasePath ?>/fonts/NotoSansTC-Regular.ttf',
-                        'https://fonts.gstatic.com/s/notosanstc/v39/-nFuOG829Oofr2wohFbTp9ifNAn722rq0MXz76Cy_Co.ttf'
-                    ),
-                    loadFontBytes(
-                        '<?= $appBasePath ?>/fonts/NotoSansTC-Bold.ttf',
-                        'https://fonts.gstatic.com/s/notosanstc/v39/-nFuOG829Oofr2wohFbTp9ifNAn722rq0MXz70e1_Co.ttf'
-                    ),
-                ]);
-
-                customFont = await pdfDoc.embedFont(regularBytes); // Regular (400)：內文、副標題
-                customFontBold = await pdfDoc.embedFont(boldBytes); // Bold (700)：封面標題、目錄標題
-                console.log('成功載入中文字型 (Noto Sans TC Regular + Bold)');
-                canRenderUnicode = true;
-            } catch (error) {
-                console.warn('無法載入中文字型，退回 WinAnsi (不支援中文):', error);
-                showNotice('warning', '中文字型載入失敗',
-                    '伺服器 fonts/ 與 Google Fonts 都讀不到 Noto Sans TC，封面、目錄的中文字會被略過。' +
-                    '請確認伺服器可連外並開啟 allow_url_fopen，或手動下載字型放到 fonts/（見 README）。');
-                customFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-                customFontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-                canRenderUnicode = false;
-            }
-
-            // 標準字型(用於數字和英文)
-            const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-            const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-            // 快取已解析的來源 PDF：目錄頁計算頁數與合併階段會讀取同一批檔案，
-            // 避免每個檔案被 arrayBuffer()＋PDFDocument.load() 各解析一次（大檔案時明顯拖慢處理速度）
-            const srcDocCache = new Map();
-            async function getSrcDoc(fileIndex) {
-                if (!srcDocCache.has(fileIndex)) {
-                    const arrayBuffer = await uploadedFiles[fileIndex].arrayBuffer();
-                    srcDocCache.set(fileIndex, await PDFDocument.load(arrayBuffer));
-                }
-                return srcDocCache.get(fileIndex);
-            }
-
-            // 取得封面和目錄設定
-            const enableCover = document.getElementById('enableCover')?.checked || false;
-            const enableToc = document.getElementById('enableToc')?.checked || false;
-
-            // 1. 封面頁
-            let useFirstAsCover = false;
-            if (enableCover) {
-                const coverSource = document.getElementById('coverSource')?.value || 'template';
-                if (coverSource === 'template') {
-                    const coverPage = pdfDoc.addPage([pW, pH]);
-                    const coverTitle = document.getElementById('coverTitle')?.value || '';
-                    const coverSubtitle = document.getElementById('coverSubtitle')?.value || '';
-
-                    // 封面是第1頁（奇數頁），裝訂邊在左，內容向右偏移
-                    const coverGutterOffset = gutter + 10;
-
-                    if (coverTitle) {
-                        const titleSize = 48;
-                        const titleText = canRenderUnicode ? coverTitle : ensureWinAnsi(coverTitle);
-                        const titleFont = canRenderUnicode ? customFontBold : fontBold;
-                        const titleWidth = titleFont.widthOfTextAtSize(titleText, titleSize);
-                        coverPage.drawText(titleText, {
-                            x: (pW - titleWidth) / 2 + coverGutterOffset / 2,
-                            y: pH * 0.6,
-                            size: titleSize,
-                            font: titleFont,
-                            color: rgb(0, 0, 0),
-                        });
-                    }
-
-                    if (coverSubtitle) {
-                        const subtitleSize = 28;
-                        const subtitleText = canRenderUnicode ? coverSubtitle : ensureWinAnsi(coverSubtitle);
-                        const subtitleFont = canRenderUnicode ? customFont : font;
-                        const subtitleWidth = subtitleFont.widthOfTextAtSize(subtitleText, subtitleSize);
-                        coverPage.drawText(subtitleText, {
-                            x: (pW - subtitleWidth) / 2 + coverGutterOffset / 2,
-                            y: pH * 0.5,
-                            size: subtitleSize,
-                            font: subtitleFont,
-                            color: rgb(0.3, 0.3, 0.3),
-                        });
-                    }
-                } else if (coverSource === 'first' && uploadedFiles.length > 0) {
-                    // 使用第一個檔案的第一頁作為封面
-                    useFirstAsCover = true;
-                    const coverFile = uploadedFiles[0];
-                    const arrayBuffer = await coverFile.arrayBuffer();
-                    const srcDoc = await PDFDocument.load(arrayBuffer);
-                    const [firstPage] = await pdfDoc.embedPages([srcDoc.getPages()[0]]);
-                    const newPage = pdfDoc.addPage([pW, pH]);
-
-                    // 計算縮放
-                    const scale = Math.min(pW / firstPage.width, pH / firstPage.height);
-                    const drawWidth = firstPage.width * scale;
-                    const drawHeight = firstPage.height * scale;
-                    const x = (pW - drawWidth) / 2;
-                    const y = (pH - drawHeight) / 2;
-
-                    newPage.drawPage(firstPage, {
-                        x: x,
-                        y: y,
-                        width: drawWidth,
-                        height: drawHeight,
-                    });
-                } else if (coverSource === 'upload' && coverImageFile) {
-                    // 使用上傳的 PDF 作為封面
-                    const arrayBuffer = await coverImageFile.arrayBuffer();
-                    const srcDoc = await PDFDocument.load(arrayBuffer);
-                    const [firstPage] = await pdfDoc.embedPages([srcDoc.getPages()[0]]);
-                    const newPage = pdfDoc.addPage([pW, pH]);
-
-                    // 計算縮放
-                    const scale = Math.min(pW / firstPage.width, pH / firstPage.height);
-                    const drawWidth = firstPage.width * scale;
-                    const drawHeight = firstPage.height * scale;
-                    const x = (pW - drawWidth) / 2;
-                    const y = (pH - drawHeight) / 2;
-
-                    newPage.drawPage(firstPage, {
-                        x: x,
-                        y: y,
-                        width: drawWidth,
-                        height: drawHeight,
-                    });
-                }
-            }
-
-            // 2. 目錄頁
-            if (enableToc) {
-                const tocPage = pdfDoc.addPage([pW, pH]);
-                const tocTitle = '目錄';
-                const tocTitleSize = 32;
-
-                // 目錄頁數處理：
-                // - 如果只有目錄（沒有封面），目錄是第1頁（奇數）
-                // - 如果有封面，目錄是第2頁（偶數）
-                const tocPageNumber = enableCover ? 2 : 1;
-                const isTocOddPage = (tocPageNumber % 2 === 1);
-
-                // 奇數頁：裝訂邊在左，內容向右；偶數頁：裝訂邊在右，內容在左
-                const tocLeftMargin = isTocOddPage ? (gutter + 60) : 60;
-                const tocRightMargin = isTocOddPage ? 60 : (gutter + 60);
-
-                const tocTitleText = canRenderUnicode ? tocTitle : ensureWinAnsi(tocTitle);
-                const tocTitleFont = canRenderUnicode ? customFontBold : fontBold;
-                const tocTitleWidthReal = tocTitleFont.widthOfTextAtSize(tocTitleText, tocTitleSize);
-                tocPage.drawText(tocTitleText, {
-                    x: (pW - tocTitleWidthReal) / 2,
-                    y: pH - 80,
-                    size: tocTitleSize,
-                    font: tocTitleFont,
-                    color: rgb(0, 0, 0),
-                });
-
-                // 繪製目錄項目
-                let yPos = pH - 140;
-                const lineHeight = 55;
-
-                // 檢查是否使用第一個檔案作為封面
-                let startFileIndex = useFirstAsCover ? 1 : 0;
-
-                const fileTitles = Array.from(document.querySelectorAll('.file-title')).map(input => input.value);
-                const displayTitles = fileTitles.slice(startFileIndex);
-
-                // 計算每個檔案的頁數，以得到實際合併後的頁碼
-                const filePageCounts = [];
-                for (let fileIndex = startFileIndex; fileIndex < uploadedFiles.length; fileIndex++) {
-                    const srcDoc = await getSrcDoc(fileIndex);
-                    filePageCounts.push(srcDoc.getPageCount());
-                }
-
-                let currentPageNum = startNo; // 從起始頁號開始
-                displayTitles.forEach((title, index) => {
-                    if (yPos < 100) return;
-
-                    // 章節名稱（使用左邊界）
-                    // 目錄項目使用 Regular（內文字重），「目錄」標題才用 Bold
-                    const chapterTitleRaw = title || `章節 ${index + 1}`;
-                    const chapterTitle = canRenderUnicode ? chapterTitleRaw : ensureWinAnsi(
-                        chapterTitleRaw);
-                    // entryFont 選 Regular；WinAnsi fallback 時用 Helvetica
-                    const entryFont = canRenderUnicode ? customFont : font;
-
-                    // 計算該檔案在合併後的起始頁碼
-                    const filePages = filePageCounts[index] || 0;
-                    const sheetsNeeded = Math.ceil(filePages / nUp);
-                    const pageNum = currentPageNum.toString();
-                    const pageNumWidth = font.widthOfTextAtSize(pageNum, 24);
-
-                    // 計算標題可用寬度，以混合字型正確量測避免 CJK 字型誤報 ASCII 寬度
-                    const minDotsGap = 30;
-                    const maxTitleWidth = pW - tocRightMargin - tocLeftMargin - pageNumWidth - minDotsGap;
-                    const titleLines = wrapMixed(chapterTitle, entryFont, font, 24, maxTitleWidth);
-                    const intraLineHeight = 34; // 同一章節內換行間距
-
-                    // 繪製所有行（ASCII 用 Helvetica 確保 PDF 複製正確，非 ASCII 用 CJK 字型）
-                    titleLines.forEach((line, lineIdx) => {
-                        const lineY = yPos - lineIdx * intraLineHeight;
-                        drawMixedText(tocPage, line, tocLeftMargin, lineY, 24, entryFont, font, rgb(
-                            0, 0, 0));
-                    });
-
-                    // 點線和頁碼對齊最後一行
-                    const lastLineY = yPos - (titleLines.length - 1) * intraLineHeight;
-                    const lastLineWidth = measureMixedWidth(titleLines[titleLines.length - 1], entryFont,
-                        font, 24);
-
-                    tocPage.drawText(pageNum, {
-                        x: pW - tocRightMargin - pageNumWidth,
-                        y: lastLineY,
-                        size: 24,
-                        font: font,
-                        color: rgb(0, 0, 0),
-                    });
-
-                    currentPageNum += sheetsNeeded;
-
-                    // 繪製點線
-                    const dotStartX = tocLeftMargin + lastLineWidth + 10;
-                    const dotEndX = pW - tocRightMargin - pageNumWidth - 10;
-                    for (let x = dotStartX; x < dotEndX; x += 5) {
-                        tocPage.drawText('.', {
-                            x: x,
-                            y: lastLineY,
-                            size: 24,
-                            font: font,
-                            color: rgb(0.5, 0.5, 0.5),
-                        });
-                    }
-
-                    // 下一個項目的 yPos：考慮換行行數
-                    yPos -= lineHeight + (titleLines.length - 1) * intraLineHeight;
-                });
-            }
-
-            // 計算每格尺寸
-            const safeW = pW - gutter - 20;
-            const safeH = pH - 40;
-            const gridW = (safeW - (cols - 1) * gap) / cols;
-            const gridH = (safeH - (rows - 1) * gap) / rows;
-
-            // 3. 處理所有上傳的檔案（分檔案處理，避免跨頁混合）
-            let coverPages = 0; // 封面和目錄的總頁數
-
-            let startFileIndex = useFirstAsCover ? 1 : 0;
-
-            if (enableCover) {
-                coverPages++; // 封面佔一頁
-            }
-
-            if (enableToc) {
-                coverPages++; // 目錄佔一頁
-            }
-
-            // 分別處理每個 PDF 檔案，確保不混合在同一頁
-            let sheetCount = 0;
-
-            for (let fileIndex = startFileIndex; fileIndex < uploadedFiles.length; fileIndex++) {
-                const srcDoc = await getSrcDoc(fileIndex);
-                const srcPages = await pdfDoc.embedPages(srcDoc.getPages());
-
-                let currentSheet = null;
-                let pageIndexOnSheet = 0;
-
-                for (let i = 0; i < srcPages.length; i++) {
-                    if (pageIndexOnSheet === 0) {
-                        currentSheet = pdfDoc.addPage([pW, pH]);
-                        sheetCount++;
-                    }
-
-                    // 計算網格位置
-                    const c = pageIndexOnSheet % cols;
-                    const r = Math.floor(pageIndexOnSheet / cols);
-
-                    const srcPage = srcPages[i];
-                    const scale = Math.min(gridW / srcPage.width, gridH / srcPage.height);
-                    const drawWidth = srcPage.width * scale;
-                    const drawHeight = srcPage.height * scale;
-
-                    const isOddSheet = (sheetCount % 2 === 1);
-                    let baseX = isOddSheet ? gutter + 10 : 10;
-
-                    const x = baseX + c * (gridW + gap) + (gridW - drawWidth) / 2;
-                    const topY = pH - 20;
-                    const y = topY - (r * (gridH + gap)) - drawHeight - (gridH - drawHeight) / 2;
-
-                    currentSheet.drawPage(srcPage, {
-                        x: x,
-                        y: y,
-                        width: drawWidth,
-                        height: drawHeight,
-                    });
-
-                    // 畫外框
-                    if (drawBorder) {
-                        currentSheet.drawRectangle({
-                            x: x,
-                            y: y,
-                            width: drawWidth,
-                            height: drawHeight,
-                            borderColor: rgb(0, 0, 0),
-                            borderWidth: 1,
-                        });
-                    }
-
-                    pageIndexOnSheet++;
-
-                    // 如果目前頁面已滿，重置計數器
-                    if (pageIndexOnSheet >= nUp) {
-                        pageIndexOnSheet = 0;
-                    }
-                }
-
-                // 如果該檔案結束時沒填滿最後一頁，則下個檔案從新頁開始
-                // （已經透過 pageIndexOnSheet 重置處理）
-            }
-
-            // 繪製頁碼（最後疊加，確保在所有內容之上）
-            if (pageNoPos !== 'none') {
-                const allPages = pdfDoc.getPages();
-                for (let s = 0; s < sheetCount; s++) {
-                    const page = allPages[coverPages + s];
-                    const pageNumStr = (startNo + s).toString();
-                    const textWidth = font.widthOfTextAtSize(pageNumStr, 12);
-                    const isOddSheet = ((s + 1) % 2 === 1);
-                    let textX;
-                    if (pageNoPos === 'center') {
-                        textX = (pW - textWidth) / 2;
-                    } else {
-                        // outside
-                        textX = isOddSheet ? pW - textWidth - 20 : 20;
-                    }
-                    const textY = 15;
-                    // 繪製膠囊（pill）背景並在上方繪製頁碼文字，文字水平垂直置中
-                    const fontSize = 12;
-                    const paddingH = pageNoOutline && pageNoOutlineWidth > 0 ? pageNoOutlineWidth : 6;
-                    const paddingV = Math.max(4, Math.round(paddingH / 1.5));
-                    const textW = font.widthOfTextAtSize(pageNumStr, fontSize);
-                    const rectH = fontSize + paddingV * 2;
-                    const minW = rectH; // 以高度作為最小寬度，單字時會成圓形
-                    const rectW = Math.max(textW + paddingH * 2, minW);
-                    const centerX = textX + textW / 2;
-                    const centerY = textY + fontSize / 2;
-
-                    // 顏色根據 style 決定
-                    const darkStyle = (pageNoStyle === 'dark');
-                    const bgColor = darkStyle ? rgb(0, 0, 0) : rgb(1, 1, 1);
-                    const fgColor = darkStyle ? rgb(1, 1, 1) : rgb(0, 0, 0);
-
-                    const halfH = rectH / 2;
-                    const halfW = rectW / 2;
-
-                    // 左右兩端圓心位置（形成膠囊）
-                    const leftCenterX = centerX - (rectW - rectH) / 2;
-                    const rightCenterX = centerX + (rectW - rectH) / 2;
-
-                    // 繪製填滿的左半圓、右半圓與中間矩形
-                    page.drawEllipse({
-                        x: leftCenterX,
-                        y: centerY,
-                        xScale: halfH,
-                        yScale: halfH,
-                        color: bgColor
-                    });
-                    page.drawEllipse({
-                        x: rightCenterX,
-                        y: centerY,
-                        xScale: halfH,
-                        yScale: halfH,
-                        color: bgColor
-                    });
-                    page.drawRectangle({
-                        x: leftCenterX,
-                        y: centerY - halfH,
-                        width: rectW - rectH,
-                        height: rectH,
-                        color: bgColor
-                    });
-
-                    // 文字置中（PDF 座標 y 為文字基線，故以 fontSize/2 做近似置中）
-                    const textDrawX = centerX - textW / 2;
-                    const textDrawY = centerY - fontSize / 2 + Math.round(fontSize * 0.15);
-                    page.drawText(pageNumStr, {
-                        x: textDrawX,
-                        y: textDrawY,
-                        size: fontSize,
-                        font,
-                        color: fgColor
-                    });
-                }
-            }
-
-            // 輸出與預覽
-            processedPdfBytes = await pdfDoc.save();
+            processedPdfBytes = result.pdfBytes;
             const blob = new Blob([processedPdfBytes], {
                 type: 'application/pdf'
             });
             const url = URL.createObjectURL(blob);
             document.getElementById('pdfPreview').src = url;
 
-            // 顯示預覽區域和下載按鈕
             document.getElementById('previewSection').style.display = 'block';
             document.getElementById('downloadBtn').disabled = false;
 
-            // 設定預設檔名（包含時間戳）
             const now = new Date();
             const timestamp = now.getFullYear() +
                 String(now.getMonth() + 1).padStart(2, '0') +
@@ -913,6 +422,7 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
             alert('處理發生錯誤：' + err.message);
             console.error(err);
         } finally {
+            if (worker) worker.terminate();
             overlay.classList.remove('active');
         }
     }
