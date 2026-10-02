@@ -66,7 +66,7 @@ cd hapbun
 
 3. 直接訪問 `index.php`
 
-4. 安裝中文字型（`fonts/` 不進版本控制）：執行 `php install_font.php`，或用瀏覽器開啟 `install_font.php` 看 JSON 結果。需要 PHP 開啟 `allow_url_fopen` 與 `openssl` 擴充套件；失敗時會在結果中寫明原因（例如 `openssl_extension_missing`）
+4. 安裝中文字型（`fonts/` 不進版本控制）：執行 `php install_font.php`（需要更新時加 `--force`）；HTTP 端點拒絕執行。需要 PHP 開啟 `allow_url_fopen` 與 `openssl` 擴充套件；失敗時會在結果中寫明原因（例如 `openssl_extension_missing`）
 
 ### 更新部署
 
@@ -95,10 +95,10 @@ pdf-lib 預設僅支援 WinAnsi 編碼（Helvetica 等標準字型），無法�
 2. **字型載入策略**（`loadFontBytes`）：優先從伺服器本地 `fonts/` 目錄讀取；若不存在則 fallback 至 CDN
    - `fonts.gstatic.com` 支援 CORS，可直接從瀏覽器 fetch
 
-3. **伺服器端字型安裝**（`install_font.php`）：每次合併時於背景呼叫，自動下載字型至 `fonts/` 目錄快取（`fonts/` 不進版本控制）
+3. **伺服器端字型安裝**（`install_font.php`）：只由部署者透過 CLI 執行，下載字型至 `fonts/` 目錄快取（`fonts/` 不進版本控制）
    - 使用 PHP `file_get_contents`，不依賴 curl
    - 需確認 `allow_url_fopen = On`
-   - 也可直接開啟 `/koilisu/hapbun/install_font.php` 看安裝結果（JSON），或手動把上述兩個 TTF 下載到 `fonts/`
+   - 使用 `php install_font.php` 看安裝結果（JSON），或手動把上述兩個 TTF 下載到 `fonts/`；瀏覽器仍直接從 CDN fallback，無需寫入伺服器
 
 4. **WinAnsi 安全防護**（`ensureWinAnsi`）：若字型載入失敗則 fallback 至 Helvetica，同時過濾非 WinAnsi 字元，避免 pdf-lib 拋出編碼錯誤，並在頁面上顯示警告
 

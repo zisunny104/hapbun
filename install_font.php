@@ -1,8 +1,14 @@
 <?php
-header('Content-Type: application/json');
+// 部署工具只允許 CLI；拒絕匿名 HTTP 觸發下載／覆寫。
+if (PHP_SAPI !== 'cli') {
+    http_response_code(403);
+    header('Content-Type: application/json');
+    echo json_encode(['installed' => false, 'error' => 'cli_only']);
+    exit;
+}
 
 $fontDir = __DIR__ . '/fonts';
-$force   = isset($_GET['force']) && $_GET['force'] === '1';
+$force = in_array('--force', $argv ?? [], true);
 
 // Noto Sans TC 靜態字重 TTF（來源：Google Fonts CDN，支援 CORS）
 // 使用静態字重而非 variable fo，避免 pdf-lib 預設取最小字重（wght=100）

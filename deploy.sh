@@ -142,7 +142,7 @@ else
   fi
   if [[ "$ANSWER" =~ ^[Yy] ]]; then
     if [ "$HAS_PHP" -eq 1 ]; then
-      # 與網頁端同一支安裝程式，CLI 下 header() 無作用、$_GET 為空
+      # 安裝程式僅允許 CLI
       echo "  ${DIM}$(php install_font.php 2>&1 || true)${RESET}"
     fi
     if [ -n "$(missing_fonts)" ] && command -v curl >/dev/null 2>&1; then
@@ -163,10 +163,10 @@ else
   else
     echo "  之後可用下列任一方式安裝："
     echo "    ${BOLD}php install_font.php${RESET}             ${DIM}# 在此目錄執行${RESET}"
-    echo "    ${BOLD}瀏覽器開啟 /koilisu/hapbun/install_font.php${RESET}  ${DIM}# 回傳 JSON 結果${RESET}"
+    echo "    ${BOLD}php install_font.php --force${RESET}     ${DIM}# 需要重新下載时${RESET}"
   fi
   if [ -d fonts ] && [ "$(id -u)" = "0" ]; then
-    warn "以 root 執行，下載的 fonts/ 屬於 root；若網頁端需要重新下載，請 chown 給 PHP-FPM 的使用者"
+    warn "以 root 執行，下載的 fonts/ 屬於 root；請保留部署者寫入權限，PHP-FPM 只需讀取"
   fi
 fi
 
