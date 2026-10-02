@@ -137,7 +137,7 @@ async function mergePdfs(settings, files, coverFile) {
         canRenderUnicode = true;
     } catch (error) {
         fontWarning = '伺服器 fonts/ 與 Google Fonts 都讀不到 Noto Sans TC，封面、目錄的中文字會被略過。' +
-            '請確認伺服器可連外並開啟 allow_url_fopen，或手動下載字型放到 fonts/（見 README）。';
+            '請確認瀏覽器可連 Google Fonts，或請部署者用 CLI 安裝字型（見 README）。';
         customFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
         customFontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
         canRenderUnicode = false;

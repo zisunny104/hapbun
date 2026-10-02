@@ -1,8 +1,16 @@
 <?php
-header('Content-Type: application/json');
+// 部署用 CLI 工具。
+if (PHP_SAPI !== 'cli') {
+    http_response_code(403);
+    header('Content-Type: application/json');
+    echo json_encode(['installed' => false, 'error' => 'cli_only']);
+    exit;
+}
+
+require_once __DIR__ . '/font-install-lib.php';
 
 $fontDir = __DIR__ . '/fonts';
-$force   = isset($_GET['force']) && $_GET['force'] === '1';
+$force = in_array('--force', $argv ?? [], true);
 
 // Noto Sans TC 靜態字重 TTF（來源：Google Fonts CDN，支援 CORS）
 // 使用静態字重而非 variable fo，避免 pdf-lib 預設取最小字重（wght=100）
@@ -13,6 +21,11 @@ $fonts = [
     'https://fonts.gstatic.com/s/notosanstc/v39/-nFuOG829Oofr2wohFbTp9ifNAn722rq0MXz70e1_Co.ttf',
 ];
 
+$digests = [
+    'NotoSansTC-Regular.ttf' => '619662a0583f38311e92666927e5edbfd30f2a1fbe8593685660bd11bdd46a10',
+    'NotoSansTC-Bold.ttf' => '33e8464f3432fd9eba5fa6ff74f5fb9ee612cad703877bd71c36e6f167c0a7e3',
+];
+
 // 下載前先檢查環境，讓失敗原因看得出來（而不是只有 file_get_contents_failed）
 $envError = !ini_get('allow_url_fopen') ? 'allow_url_fopen_disabled'
     : (!extension_loaded('openssl') ? 'openssl_extension_missing' : null);
@@ -21,59 +34,25 @@ if (!is_dir($fontDir)) {
     if (!mkdir($fontDir, 0755, true)) {
         http_response_code(500);
         echo json_encode(['installed' => false, 'error' => 'mkdir_failed']);
-        exit;
+        exit(1);
     }
 }
 
-// 若所有字型已存在且不強制更新，直接回傳已安裝
-if (!$force) {
-    $allExist = true;
-    foreach ($fonts as $filename => $_) {
-        if (!file_exists($fontDir . '/' . $filename) || filesize($fontDir . '/' . $filename) === 0) {
-            $allExist = false;
-            break;
-        }
-    }
-    if ($allExist) {
-        echo json_encode(['installed' => true, 'fonts' => array_keys($fonts)]);
-        exit;
-    }
-}
-
-/**
- * 下載單一字型（file_get_contents，需 allow_url_fopen = On）
- * 回傳 ['ok'=>bool, 'error'=>string|null]
- */
-function downloadFont(string $url, string $dest): array
-{
-    $context = stream_context_create(['http' => [
-        'timeout' => 30,
-        'follow_location' => 1,
-    ]]);
-    $data = @file_get_contents($url, false, $context);
-    if ($data === false) {
-        return ['ok' => false, 'error' => 'file_get_contents_failed'];
-    }
-    // 解析 HTTP 狀態碼
-    if (isset($http_response_header) && is_array($http_response_header)) {
-        if (preg_match('#HTTP/\S+\s+(\d{3})#', $http_response_header[0], $m) && intval($m[1]) >= 400) {
-            return ['ok' => false, 'error' => 'http_' . $m[1]];
-        }
-    }
-    if (file_put_contents($dest, $data) === false) {
-        return ['ok' => false, 'error' => 'save_failed'];
-    }
-    return ['ok' => true, 'error' => null];
+// 字型與授權一併安裝。
+$license = @file_get_contents(__DIR__ . '/licenses/NotoSansTC-OFL.txt');
+if ($license === false || !font_install_atomic_write($fontDir . '/OFL.txt', $license)) {
+    echo json_encode(['installed' => false, 'error' => 'license_install_failed']);
+    exit(1);
 }
 
 $results = [];
 foreach ($fonts as $filename => $url) {
     $dest = $fontDir . '/' . $filename;
-    if (!$force && file_exists($dest) && filesize($dest) > 0) {
+    if (!$force && is_file($dest) && hash_equals($digests[$filename], (string)hash_file('sha256', $dest))) {
         $results[$filename] = 'already_exists';
         continue;
     }
-    $r = $envError ? ['ok' => false, 'error' => $envError] : downloadFont($url, $dest);
+    $r = $envError ? ['ok' => false, 'error' => $envError] : downloadFont($url, $dest, $digests[$filename]);
     $results[$filename] = $r['ok'] ? 'downloaded' : ('failed:' . $r['error']);
 }
 
@@ -82,3 +61,4 @@ if ($anyFailed) {
     http_response_code(500);
 }
 echo json_encode(['installed' => !$anyFailed, 'results' => $results]);
+exit($anyFailed ? 1 : 0);

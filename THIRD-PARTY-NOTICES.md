@@ -14,6 +14,8 @@ Tocas UI 內含 Font Awesome Free 圖示（Icons CC BY 4.0 / Fonts SIL OFL 1.1 /
 
 #### 伺服器端字型檔 · Server-side font asset
 
-Noto Sans TC（Regular／Bold 靜態字重）由 `install_font.php` 於首次執行時自
+Noto Sans TC（Regular／Bold 靜態字重）由 `install_font.php` 由部署者透過 CLI 自
 Google Fonts CDN（`fonts.gstatic.com`）下載並快取於 `fonts/` 目錄，授權為
 SIL Open Font License 1.1，不隨本 repo 原始碼一併散布。
+
+完整著作權及 OFL 文字見 [Noto Sans TC 授權](licenses/NotoSansTC-OFL.txt)，上游為 [Google Fonts Noto Sans TC](https://github.com/google/fonts/tree/main/ofl/notosanstc)。部署時安裝程式亦將全文複製至 `fonts/OFL.txt`，讓自託管字型附有授權；「不隨 Git 散布」不代表透過網站提供字型可以省略授權。下載的未修改靜態字型是 2.004-H2、400／700，固定 Google Fonts v39 URL，SHA-256 寫在安裝程式。字型保留 OFL，程式碼維持自己的授權；產生的 PDF 不因此改為 OFL。

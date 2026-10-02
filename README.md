@@ -19,6 +19,8 @@ PDF 合併排版工具，可設定多頁、增加封面與目錄、頁碼，方�
 
 ## 使用方式
 
+直接使用：[網頁工具](https://toka.dev/koilisu/hapbun)。
+
 1. **上傳檔案**
    - 點擊上傳區域或直接拖曳 PDF 檔案
    - 支援多檔案同時上傳
@@ -52,33 +54,10 @@ PDF 合併排版工具，可設定多頁、增加封面與目錄、頁碼，方�
 - **檔案下載**：downloadjs 1.4.7
 - **處理方式**：完全在瀏覽器端處理，無需後端伺服器
 
-## 安裝
+## 維護
 
-### 獨立使用
-
-1. Clone repo：
-```bash
-git clone https://github.com/zisunny104/hapbun.git
-cd hapbun
-```
-
-2. 設定網頁伺服器
-
-3. 直接訪問 `index.php`
-
-4. 安裝中文字型（`fonts/` 不進版本控制）：執行 `php install_font.php`，或用瀏覽器開啟 `install_font.php` 看 JSON 結果。需要 PHP 開啟 `allow_url_fopen` 與 `openssl` 擴充套件；失敗時會在結果中寫明原因（例如 `openssl_extension_missing`）
-
-### 更新部署
-
-在伺服器上的專案目錄執行 `./deploy.sh`：確認沒有未 commit 的修改，fetch remote `main`，**merge 前**用 `php -l` 檢查新增／修改的 PHP 檔語法（有錯就中止），fast-forward 更新後**檢查字型依賴**：`fonts/` 缺字型時會列出環境問題（`allow_url_fopen`、`openssl`、目錄權限），互動終端會詢問是否立即下載（先用 `install_font.php`，失敗再改用 `curl`），非互動執行則印出安裝指令。缺字型不會讓部署失敗，瀏覽器端仍會 fallback 到 Google Fonts。
-
-- `DEPLOY_BRANCH`：要部署的 branch，預設 `main`
-- `DEPLOY_RELOAD_CMD`：更新後要執行的指令，例如 `DEPLOY_RELOAD_CMD="systemctl reload php8.3-fpm" ./deploy.sh`
-
-### 與 KoiLiSu 開利手整合
-
-1. 將此 repo 放置在 `koilisu/apps/hapbun/` 目錄
-2. 透過 `https://toka.dev/koilisu/hapbun` 造訪
+由作者維運；既有環境的更新工具為 `./deploy.sh`，請先審閱變更並完成驗證。
+字型快取由維運者執行 `php install_font.php` 更新，授權須一併保留。
 
 ## 其他說明
 
@@ -95,10 +74,10 @@ pdf-lib 預設僅支援 WinAnsi 編碼（Helvetica 等標準字型），無法�
 2. **字型載入策略**（`loadFontBytes`）：優先從伺服器本地 `fonts/` 目錄讀取；若不存在則 fallback 至 CDN
    - `fonts.gstatic.com` 支援 CORS，可直接從瀏覽器 fetch
 
-3. **伺服器端字型安裝**（`install_font.php`）：每次合併時於背景呼叫，自動下載字型至 `fonts/` 目錄快取（`fonts/` 不進版本控制）
+3. **伺服器端字型安裝**（`install_font.php`）：只由部署者透過 CLI 執行，下載字型至 `fonts/` 目錄快取（`fonts/` 不進版本控制）
    - 使用 PHP `file_get_contents`，不依賴 curl
    - 需確認 `allow_url_fopen = On`
-   - 也可直接開啟 `/koilisu/hapbun/install_font.php` 看安裝結果（JSON），或手動把上述兩個 TTF 下載到 `fonts/`
+   - 字型快取由維運者管理，缺少時瀏覽器改從 CDN 載入
 
 4. **WinAnsi 安全防護**（`ensureWinAnsi`）：若字型載入失敗則 fallback 至 Helvetica，同時過濾非 WinAnsi 字元，避免 pdf-lib 拋出編碼錯誤，並在頁面上顯示警告
 
