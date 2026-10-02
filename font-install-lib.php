@@ -12,7 +12,7 @@ function font_install_atomic_write(string $dest, string $data): bool {
     }
 }
 
-/** 固定來源＋固定摘要；拒絕 HTML、被替換的字型及過大下載。 */
+/** 驗證摘要與大小後安裝字型。 */
 function downloadFont(string $url, string $dest, string $expectedSha): array {
     $context = stream_context_create([
         'http' => ['timeout' => 30, 'follow_location' => 0],

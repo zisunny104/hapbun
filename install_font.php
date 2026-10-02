@@ -1,5 +1,5 @@
 <?php
-// 部署工具只允許 CLI；拒絕匿名 HTTP 觸發下載／覆寫。
+// 部署用 CLI 工具。
 if (PHP_SAPI !== 'cli') {
     http_response_code(403);
     header('Content-Type: application/json');
@@ -38,7 +38,7 @@ if (!is_dir($fontDir)) {
     }
 }
 
-// 自託管字型的授權亦安裝到同一個資料夾，不因不進 Git 而省略。
+// 字型與授權一併安裝。
 $license = @file_get_contents(__DIR__ . '/licenses/NotoSansTC-OFL.txt');
 if ($license === false || !font_install_atomic_write($fontDir . '/OFL.txt', $license)) {
     echo json_encode(['installed' => false, 'error' => 'license_install_failed']);

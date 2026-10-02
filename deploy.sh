@@ -152,7 +152,7 @@ else
       # 安裝程式僅允許 CLI
       echo "  ${DIM}$(php install_font.php 2>&1 || true)${RESET}"
     fi
-    # 不使用未驗證摘要的 curl fallback，安裝與完整性檢查统一由 CLI 工具處理。
+    # 安裝與完整性檢查由 CLI 工具處理。
     MISSING="$(missing_fonts)"
     if [ -z "$MISSING" ]; then
       ok "字型已安裝到 fonts/"
