@@ -70,7 +70,7 @@ cd hapbun
 
 ### 更新部署
 
-在伺服器上的專案目錄執行 `./deploy.sh`：確認沒有未 commit 的修改，fetch remote `main`，**merge 前**用 `php -l` 檢查新增／修改的 PHP 檔語法（有錯就中止），fast-forward 更新後**檢查字型依賴**：`fonts/` 缺字型時會列出環境問題（`allow_url_fopen`、`openssl`、目錄權限），互動終端會詢問是否立即下載（先用 `install_font.php`，失敗再改用 `curl`），非互動執行則印出安裝指令。缺字型不會讓部署失敗，瀏覽器端仍會 fallback 到 Google Fonts。
+在伺服器上的專案目錄執行 `./deploy.sh`：確認沒有未 commit 的修改，fetch remote `main`，**merge 前**用 `php -l` 檢查新增／修改的 PHP 檔語法（有錯就中止），fast-forward 更新後**檢查字型依賴**：`fonts/` 缺字型時會列出環境問題（`allow_url_fopen`、`openssl`、目錄權限），互動終端會詢問是否立即下載（先用 `install_font.php`，不使用略過摘要驗證的下載 fallback），非互動執行則印出安裝指令。缺字型不會讓部署失敗，瀏覽器端仍會 fallback 到 Google Fonts。
 
 - `DEPLOY_BRANCH`：要部署的 branch，預設 `main`
 - `DEPLOY_RELOAD_CMD`：更新後要執行的指令，例如 `DEPLOY_RELOAD_CMD="systemctl reload php8.3-fpm" ./deploy.sh`
@@ -165,3 +165,7 @@ pdf-lib 預設僅支援 WinAnsi 編碼（Helvetica 等標準字型），無法�
 - PDF 多檔案合併與 N-up 排版
 - 封面和目錄生成功能
 - 檔案拖曳排序與章節編輯
+
+### 字型來源與部署完整性
+
+使用 Google Fonts Noto Sans TC v39 靜態 400／700 字重（2.004-H2）；安裝工具驗證固定 SHA-256、16 MiB 大小上限，先写同目錄暫存檔再替換，失敗不覆寫既有檔案。字型更新需一起核對來源、摘要與 OFL，不能只換下載 URL。`licenses/NotoSansTC-OFL.txt` 隨程式散布，部署時一併安裝為 `fonts/OFL.txt`；`fonts/` 仍是忽略的部署產物。浏览器 CDN fallback 與自託管字型是兩種載入方式，部署工具的摘要驗證不涵蓋瀏覽器 CDN 回應。

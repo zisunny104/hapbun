@@ -112,10 +112,17 @@ echo
 step "檢查依賴：Noto Sans TC 字型（fonts/）"
 FONTS=(NotoSansTC-Regular.ttf NotoSansTC-Bold.ttf)
 missing_fonts() {
-  local f
+  local f expected actual
   for f in "${FONTS[@]}"; do
-    [ -s "fonts/$f" ] || echo "$f"
+    if [ "$f" = "NotoSansTC-Regular.ttf" ]; then
+      expected=619662a0583f38311e92666927e5edbfd30f2a1fbe8593685660bd11bdd46a10
+    else
+      expected=33e8464f3432fd9eba5fa6ff74f5fb9ee612cad703877bd71c36e6f167c0a7e3
+    fi
+    actual="$(sha256sum "fonts/$f" 2>/dev/null | awk '{print $1}' || true)"
+    [ "$actual" = "$expected" ] || echo "$f（缺少或摘要不符）"
   done
+  cmp -s fonts/OFL.txt licenses/NotoSansTC-OFL.txt || echo 'OFL.txt（缺少或內容不符）' 
 }
 MISSING="$(missing_fonts)"
 if [ -z "$MISSING" ]; then
@@ -125,14 +132,14 @@ else
   echo "  ${DIM}沒有字型時，瀏覽器會改從 Google Fonts 直接下載；兩邊都失敗則 PDF 封面／目錄的中文會被略過（頁面會顯示警告）${RESET}"
   if [ "$HAS_PHP" -eq 1 ]; then
     if [ "$(php -r 'echo ini_get("allow_url_fopen") ? 1 : 0;')" != "1" ]; then
-      warn "PHP 的 allow_url_fopen 未開啟，網頁端的 install_font.php 無法自動下載字型"
+      warn "PHP 的 allow_url_fopen 未開啟，CLI install_font.php 無法下載字型"
     fi
     if [ "$(php -r 'echo extension_loaded("openssl") ? 1 : 0;')" != "1" ]; then
       warn "PHP 未載入 openssl 擴充套件，無法下載 https 網址（php.ini 開啟 extension=openssl）"
     fi
   fi
   if [ -e fonts ] && [ ! -w fonts ]; then
-    warn "fonts/ 目前的使用者無法寫入；網頁端自動下載還需要 PHP-FPM 的使用者（例如 www-data）可寫入"
+    warn "fonts/ 目前的使用者無法寫入；安裝時需要部署者可寫入，PHP-FPM 只需讀取"
   fi
 
   ANSWER=n
@@ -145,15 +152,7 @@ else
       # 安裝程式僅允許 CLI
       echo "  ${DIM}$(php install_font.php 2>&1 || true)${RESET}"
     fi
-    if [ -n "$(missing_fonts)" ] && command -v curl >/dev/null 2>&1; then
-      echo "  改用 curl 下載…"
-      mkdir -p fonts
-      i=0
-      for url in $(grep -o "https://fonts.gstatic.com[^']*" install_font.php); do
-        curl -fsSL -o "fonts/${FONTS[$i]}" "$url" || rm -f "fonts/${FONTS[$i]}"
-        i=$((i + 1))
-      done
-    fi
+    # 不使用未驗證摘要的 curl fallback，安裝與完整性檢查统一由 CLI 工具處理。
     MISSING="$(missing_fonts)"
     if [ -z "$MISSING" ]; then
       ok "字型已安裝到 fonts/"
