@@ -54,10 +54,14 @@ PDF 合併排版工具，可設定多頁、增加封面與目錄、頁碼，方�
 - **檔案下載**：downloadjs 1.4.7
 - **處理方式**：完全在瀏覽器端處理，無需後端伺服器
 
-## 維護
+## 部署
 
-由作者維運；既有環境的更新工具為 `./deploy.sh`，請先審閱變更並完成驗證。
-字型快取由維運者執行 `php install_font.php` 更新，授權須一併保留。
+更新用 `./deploy.sh`：先檢查工作目錄、PHP 語法，再 fast-forward 到遠端最新版，最後檢查字型。
+
+- 字型缺少或與預期版本不同時，互動終端機會詢問是否下載；非互動環境（被其他腳本或 CI 呼叫）預設不下載，只印出提示，設定 `DEPLOY_INSTALL_FONTS=1` 可自動下載。
+- 字型也可隨時手動安裝：`php install_font.php`（`--force` 強制重新下載，`--check` 只檢查狀態）。
+- 下載後會比對 SHA-256，不符就不替換現有檔案；Google 更新字型檔導致不符時，確認新檔案可信後更新 `font-install-lib.php` 內的網址與摘要。
+- 字型未安裝不影響網站運作（瀏覽器會改從 Google Fonts 載入），安裝後可少一次外部連線。
 
 ## 其他說明
 
@@ -71,13 +75,13 @@ pdf-lib 預設僅支援 WinAnsi 編碼（Helvetica 等標準字型），無法�
    - 未使用 variable font（`NotoSansTC[wght].ttf`），因為 pdf-lib 會預設取最小字重軸（wght=100），導致文字極細
    - 未使用 woff2 subset，因為每個 subset 檔案只涵蓋部分 Unicode 區段，單一檔案無法完整顯示中文
 
-2. **字型載入策略**（`loadFontBytes`）：優先從伺服器本地 `fonts/` 目錄讀取；若不存在則 fallback 至 CDN
+2. **字型載入策略**（`loadFontBytes`）：優先從伺服器本地 `fonts/` 目錄讀取；若不存在（或內容不是字型檔）則 fallback 至 CDN
    - `fonts.gstatic.com` 支援 CORS，可直接從瀏覽器 fetch
 
-3. **伺服器端字型安裝**（`install_font.php`）：只由部署者透過 CLI 執行，下載字型至 `fonts/` 目錄快取（`fonts/` 不進版本控制）
-   - 使用 PHP `file_get_contents`，不依賴 curl
-   - 需確認 `allow_url_fopen = On`
-   - 字型快取由維運者管理，缺少時瀏覽器改從 CDN 載入
+3. **伺服器端字型安裝**（`install_font.php`）：只能由部署者在命令列執行（網頁請求一律回 403），下載字型至 `fonts/` 目錄快取（`fonts/` 不進版本控制），並一併放入 OFL 授權檔
+   - 使用 PHP `file_get_contents`，不依賴 curl；需確認 CLI 的 `allow_url_fopen = On` 且載入 openssl
+   - 下載後驗證 SHA-256 與大小，通過才以暫存檔＋rename 替換
+   - 缺少時瀏覽器改從 CDN 載入，因此不影響使用
 
 4. **WinAnsi 安全防護**（`ensureWinAnsi`）：若字型載入失敗則 fallback 至 Helvetica，同時過濾非 WinAnsi 字元，避免 pdf-lib 拋出編碼錯誤，並在頁面上顯示警告
 

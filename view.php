@@ -368,8 +368,6 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
                 fontBase: '<?= $appBasePath ?>'
             };
 
-            // 伺服器字型由部署時安裝；worker 找不到本地字型時仍直接從 CDN 載入。
-
             // 檔案轉成 ArrayBuffer 連同章節標題交給 worker，用 transfer list 轉移所有權避免複製整份資料
             const titleInputs = Array.from(document.querySelectorAll('.file-title'));
             const files = await Promise.all(uploadedFiles.map(async (file, index) => ({
