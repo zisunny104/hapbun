@@ -2,7 +2,7 @@
 <html id="html" lang="zh-tw">
 
 <?php
-// 計算此應用展開後的 URL 基準路徑（例： /koilisu/apps/hapbun）
+// 計算此工具展開後的 URL 基準路徑（例： /koilisu/apps/hapbun）
 $appBasePath = rtrim(str_replace($_SERVER['DOCUMENT_ROOT'], '', __DIR__), '/\\');
 $appBasePath = str_replace('\\', '/', $appBasePath);
 $appConfig = require __DIR__ . '/config.php';
