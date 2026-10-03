@@ -73,13 +73,26 @@ function drawMixedText(page, text, x, y, size, cjkFont, asciiFont, color) {
     return curX - x;
 }
 
-// 嘗試本地字型，若本地不存在則從 CDN 下載；Worker 也有 fetch，絕對路徑不受 worker 腳本位置影響
+// 檢查是不是字型檔（TrueType／OpenType 標頭），避免伺服器把缺少的檔案導向 200 的 HTML 頁面
+function looksLikeFont(buf) {
+    if (buf.byteLength < 4) return false;
+    const tag = String.fromCharCode(...new Uint8Array(buf, 0, 4));
+    return tag === '\x00\x01\x00\x00' || tag === 'true' || tag === 'OTTO';
+}
+
+// 先試伺服器本地字型，讀不到或內容不是字型時改從 CDN 下載；Worker 也有 fetch，絕對路徑不受 worker 腳本位置影響
 async function loadFontBytes(localPath, cdnUrl) {
-    let resp = await fetch(localPath);
-    if (!resp.ok) {
-        resp = await fetch(cdnUrl);
-        if (!resp.ok) throw new Error(`無法載入字型: ${cdnUrl}`);
+    try {
+        const resp = await fetch(localPath);
+        if (resp.ok) {
+            const buf = await resp.arrayBuffer();
+            if (looksLikeFont(buf)) return buf;
+        }
+    } catch (e) {
+        // 本地讀取失敗，改用 CDN
     }
+    const resp = await fetch(cdnUrl);
+    if (!resp.ok) throw new Error(`無法載入字型: ${cdnUrl}`);
     return resp.arrayBuffer();
 }
 

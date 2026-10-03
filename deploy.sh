@@ -110,26 +110,26 @@ fi
 
 echo
 step "檢查依賴：Noto Sans TC 字型（fonts/）"
-FONTS=(NotoSansTC-Regular.ttf NotoSansTC-Bold.ttf)
-missing_fonts() {
-  local f expected actual
-  for f in "${FONTS[@]}"; do
-    if [ "$f" = "NotoSansTC-Regular.ttf" ]; then
-      expected=619662a0583f38311e92666927e5edbfd30f2a1fbe8593685660bd11bdd46a10
-    else
-      expected=33e8464f3432fd9eba5fa6ff74f5fb9ee612cad703877bd71c36e6f167c0a7e3
-    fi
-    actual="$(sha256sum "fonts/$f" 2>/dev/null | awk '{print $1}' || true)"
-    [ "$actual" = "$expected" ] || echo "$f（缺少或摘要不符）"
-  done
-  cmp -s fonts/OFL.txt licenses/NotoSansTC-OFL.txt || echo 'OFL.txt（缺少或內容不符）' 
-}
-MISSING="$(missing_fonts)"
-if [ -z "$MISSING" ]; then
-  ok "字型已就緒：${FONTS[*]}"
+# 狀態由 install_font.php --check 判斷（摘要與清單只維護一份）；沒有 php 時只能看檔案是否存在。
+# 每行格式：狀態<TAB>檔名，狀態為 ok／missing／mismatch
+if [ "$HAS_PHP" -eq 1 ]; then
+  STATUS="$(php install_font.php --check 2>/dev/null || true)"
 else
-  warn "缺少字型：$(echo $MISSING)"
-  echo "  ${DIM}沒有字型時，瀏覽器會改從 Google Fonts 直接下載；兩邊都失敗則 PDF 封面／目錄的中文會被略過（頁面會顯示警告）${RESET}"
+  STATUS=""
+  for f in NotoSansTC-Regular.ttf NotoSansTC-Bold.ttf OFL.txt; do
+    if [ -s "fonts/$f" ]; then STATUS+=$'ok\t'"$f"$'\n'; else STATUS+=$'missing\t'"$f"$'\n'; fi
+  done
+fi
+MISSING="$(awk -F'\t' '$1=="missing"{printf "%s ", $2}' <<< "$STATUS")"
+MISMATCH="$(awk -F'\t' '$1=="mismatch"{printf "%s ", $2}' <<< "$STATUS")"
+[ -n "$STATUS" ] || MISSING="（無法執行 install_font.php --check） "
+if [ -z "$MISSING" ] && [ -z "$MISMATCH" ]; then
+  ok "字型已就緒：NotoSansTC-Regular.ttf NotoSansTC-Bold.ttf（摘要與授權檔皆相符）"
+else
+  [ -z "$MISSING" ] || warn "缺少：${MISSING}"
+  [ -z "$MISMATCH" ] || warn "與預期版本不同（可能是手動放的舊版或已損壞）：${MISMATCH}"
+  [ -z "$MISSING" ] || echo "  ${DIM}缺少字型時，瀏覽器會改從 Google Fonts 下載；兩邊都失敗則 PDF 封面／目錄的中文會被略過（頁面會顯示警告）${RESET}"
+  [ -z "$MISMATCH" ] || echo "  ${DIM}摘要不同的字型檔仍會被瀏覽器使用，只要確實是 Noto Sans TC 就能正常運作；想換成官方版本請執行下載${RESET}"
   if [ "$HAS_PHP" -eq 1 ]; then
     if [ "$(php -r 'echo ini_get("allow_url_fopen") ? 1 : 0;')" != "1" ]; then
       warn "PHP 的 allow_url_fopen 未開啟，CLI install_font.php 無法下載字型"
@@ -142,27 +142,30 @@ else
     warn "fonts/ 目前的使用者無法寫入；安裝時需要部署者可寫入，PHP-FPM 只需讀取"
   fi
 
+  # 互動終端機會詢問；非互動環境（被其他腳本或 CI 呼叫）預設不下載，
+  # 要自動下載請設 DEPLOY_INSTALL_FONTS=1
   ANSWER=n
-  if [ -t 0 ]; then
+  if [ "${DEPLOY_INSTALL_FONTS:-}" = "1" ]; then
+    ANSWER=y
+  elif [ -t 0 ] && [ "${DEPLOY_INSTALL_FONTS:-}" != "0" ]; then
     read -r -p "  現在下載字型嗎？[Y/n] " ANSWER || ANSWER=n
     ANSWER="${ANSWER:-y}"
+  elif [ ! -t 0 ]; then
+    echo "  ${DIM}非互動環境，略過下載（需要自動下載請設 DEPLOY_INSTALL_FONTS=1）${RESET}"
   fi
-  if [[ "$ANSWER" =~ ^[Yy] ]]; then
-    if [ "$HAS_PHP" -eq 1 ]; then
-      # 安裝程式僅允許 CLI
-      echo "  ${DIM}$(php install_font.php 2>&1 || true)${RESET}"
-    fi
-    # 安裝與完整性檢查由 CLI 工具處理。
-    MISSING="$(missing_fonts)"
-    if [ -z "$MISSING" ]; then
+  if [[ "$ANSWER" =~ ^[Yy] ]] && [ "$HAS_PHP" -eq 1 ]; then
+    php install_font.php 2>&1 | sed 's/^/    /' || true
+    if [ "$(php install_font.php --check >/dev/null 2>&1; echo $?)" = "0" ]; then
       ok "字型已安裝到 fonts/"
     else
-      fail "仍缺少：$(echo $MISSING)（部署本身已完成，字型可稍後補裝）"
+      fail "字型尚未就緒（部署本身已完成，字型可稍後補裝；上方訊息說明原因）"
     fi
+  elif [[ "$ANSWER" =~ ^[Yy] ]]; then
+    fail "沒有 php 指令，無法下載字型；請在有 PHP CLI 的環境執行 php install_font.php"
   else
-    echo "  之後可用下列任一方式安裝："
-    echo "    ${BOLD}php install_font.php${RESET}             ${DIM}# 在此目錄執行${RESET}"
-    echo "    ${BOLD}php install_font.php --force${RESET}     ${DIM}# 需要重新下載时${RESET}"
+    echo "  之後可在此目錄執行："
+    echo "    ${BOLD}php install_font.php${RESET}             ${DIM}# 下載缺少或摘要不符的字型${RESET}"
+    echo "    ${BOLD}php install_font.php --force${RESET}     ${DIM}# 已是正確版本也重新下載${RESET}"
   fi
   if [ -d fonts ] && [ "$(id -u)" = "0" ]; then
     warn "以 root 執行，下載的 fonts/ 屬於 root；請保留部署者寫入權限，PHP-FPM 只需讀取"
