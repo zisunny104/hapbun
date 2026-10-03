@@ -1,5 +1,5 @@
 <?php
-// 載入應用設定
+// 載入工具設定
 $config = include __DIR__ . '/config.php';
 
 // 處理不同動作

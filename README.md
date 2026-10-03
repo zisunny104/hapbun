@@ -67,7 +67,7 @@ PDF 合併排版工具，可設定多頁、增加封面與目錄、頁碼，方�
 
 ### 中文字型嵌入方案
 
-pdf-lib 預設僅支援 WinAnsi 編碼（Helvetica 等標準字型），無法直接顯示中文。本應用採用以下策略：
+pdf-lib 預設僅支援 WinAnsi 編碼（Helvetica 等標準字型），無法直接顯示中文。本工具採用以下策略：
 
 1. **靜態字重 TTF**：使用 Google Fonts CDN（`fonts.gstatic.com`）提供的 Noto Sans TC 靜態字重 TTF 檔案
    - `NotoSansTC-Regular.ttf`（wght=400）：內文、副標題
@@ -96,13 +96,13 @@ pdf-lib 預設僅支援 WinAnsi 編碼（Helvetica 等標準字型），無法�
 
 ## 授權
 
-此專案為 [KoiLiSu 開利手](https://github.com/zisunny104/koilisu) 專案的一部分，MIT 授權，由 Tokas (Xiang-zi Xie) 開發。詳見 [LICENSE](LICENSE)。
+此工具為 [KoiLiSu 開利手](https://github.com/zisunny104/koilisu) 的一部分，MIT 授權，由 Tokas (Xiang-zi Xie) 開發。詳見 [LICENSE](LICENSE)。
 
 ---
 
 **版本**：1.0.5
 **作者**：Tokas (Xiang-zi Xie)
-**專案**：KoiLiSu 開利手
+**所屬**：KoiLiSu 開利手
 **網址**：https://toka.dev/koilisu/hapbun
 
 ## 更新記錄

@@ -176,7 +176,7 @@ echo
 step "部署完成"
 if [ "$HAS_PHP" -eq 1 ]; then
   VERSION="$(php -r '$c = require "config.php"; echo $c["version"] ?? "?";' 2>/dev/null || echo '?')"
-  echo "  應用版本：${BOLD}v${VERSION}${RESET}"
+  echo "  工具版本：${BOLD}v${VERSION}${RESET}"
 fi
 echo "  目前 commit：${BOLD}$(git rev-parse --short HEAD)${RESET}"
 echo "  完成時間：${DIM}$(date '+%Y-%m-%d %H:%M:%S')${RESET}"
