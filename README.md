@@ -66,27 +66,9 @@ PDF 合併排版工具，可設定多頁、增加封面與目錄、頁碼，方�
 
 ## 其他說明
 
-### 中文字型嵌入方案
+### 中文字型
 
-pdf-lib 預設僅支援 WinAnsi 編碼（Helvetica 等標準字型），無法直接顯示中文。本工具採用以下策略：
-
-1. **靜態字重 TTF**：使用 Google Fonts CDN（`fonts.gstatic.com`）提供的 Noto Sans TC 靜態字重 TTF 檔案
-   - `NotoSansTC-Regular.ttf`（wght=400）：內文、副標題
-   - `NotoSansTC-Bold.ttf`（wght=700）：封面標題、目錄標題
-   - 未使用 variable font（`NotoSansTC[wght].ttf`），因為 pdf-lib 會預設取最小字重軸（wght=100），導致文字極細
-   - 未使用 woff2 subset，因為每個 subset 檔案只涵蓋部分 Unicode 區段，單一檔案無法完整顯示中文
-
-2. **字型載入策略**（`loadFontBytes`）：優先從伺服器本地 `fonts/` 目錄讀取；若不存在（或內容不是字型檔）則 fallback 至 CDN
-   - `fonts.gstatic.com` 支援 CORS，可直接從瀏覽器 fetch
-
-3. **伺服器端字型安裝**（`install_font.php`）：只能由部署者在命令列執行（網頁請求一律回 403），下載字型至 `fonts/` 目錄快取（`fonts/` 不進版本控制），並一併放入 OFL 授權檔
-   - 使用 PHP `file_get_contents`，不依賴 curl；需確認 CLI 的 `allow_url_fopen = On` 且載入 openssl
-   - 下載後驗證 SHA-256 與大小，通過才以暫存檔＋rename 替換
-   - 缺少時瀏覽器改從 CDN 載入，因此不影響使用
-
-4. **WinAnsi 安全防護**（`ensureWinAnsi`）：若字型載入失敗則 fallback 至 Helvetica，同時過濾非 WinAnsi 字元，避免 pdf-lib 拋出編碼錯誤，並在頁面上顯示警告
-
-5. **CDN 依賴檢查**：pdf-lib、fontkit、downloadjs 任一載入失敗時，頁面頂端顯示錯誤提示並停用「處理」按鈕，不會整頁無回應
+封面、目錄、頁碼都支援中文顯示（Noto Sans TC）。字型優先從伺服器快取讀取，缺少時自動改用 Google Fonts CDN，不影響使用；部署者可用 `php install_font.php` 預先安裝到伺服器以減少外部連線。
 
 ## 使用的開源函式庫
 
