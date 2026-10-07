@@ -48,8 +48,8 @@ PDF 合併排版工具，可設定多頁、增加封面與目錄、頁碼，方�
 
 ## 技術規格
 
-- **前端框架**：Tocas UI 5.0.3
-- **PDF 處理**：pdf-lib 1.17.1 (純前端 JavaScript)
+- **前端框架**：Tocas UI 5.7.0
+- **PDF 處理**：pdf-lib 1.17.1 (純前端 JavaScript)，合併／頁碼／目錄繪製在 Web Worker（`js/pdf-worker.js`）執行，避免多檔案或大檔案時主執行緒卡死
 - **中文字型**：@pdf-lib/fontkit 1.1.1 (支援中文顯示)
 - **檔案下載**：downloadjs 1.4.7
 - **處理方式**：完全在瀏覽器端處理，無需後端伺服器
@@ -65,6 +65,14 @@ PDF 合併排版工具，可設定多頁、增加封面與目錄、頁碼，方�
 - 部署完成後會自動檢查 `.git/` 能不能被網頁下載。用 `DEPLOY_CHECK_URL=https://example.com/project ./deploy.sh` 指定網站網址，沒設就只提醒。用 `./deploy.sh --set-check-url https://example.com/project` 存一次，之後不必再帶環境變數。`./deploy.sh --check-only` 不更新程式碼，只做這項檢查。發現外洩時印出可貼的 nginx 設定，並以非 0 結束。
 
 ## 其他說明
+
+### 架構：PDF 處理在 Web Worker 執行
+
+`view.php` 主執行緒只負責收集表單設定、讀取上傳檔案、更新預覽與下載按鈕；實際的 PDF 合併、N-up 排版、封面／目錄／頁碼繪製都交給 `js/pdf-worker.js`（Dedicated Worker）執行：
+
+- 主執行緒把檔案轉成 `ArrayBuffer` 後，以 transferable objects（transfer list）把所有權轉移給 worker，再用一般訊息把 `pdfBytes` 轉移回來，避免複製整份檔案資料
+- worker 自行 `importScripts` 載入 pdf-lib／fontkit（與主執行緒各自載入一份，彼此不共用全域物件），自己處理字型載入與合併邏輯
+- 多檔案或大檔案時不會卡住主執行緒，處理期間畫面仍可顯示「處理中」遮罩
 
 ### 中文字型嵌入方案
 

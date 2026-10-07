@@ -326,14 +326,6 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
         }
     }
 
-    // 定義紙張尺寸 (Points, 1 mm = 2.8346 points)
-    const MM_TO_PT = 2.8346;
-    const SIZES = {
-        'A4': [595.28, 841.89],
-        'A3': [841.89, 1190.55],
-        'B4': [728.5, 1031.8] // JIS B4
-    };
-
     // 處理 PDF 合併排版：重運算（檔案解析、合併、頁碼／目錄繪製）交給 js/pdf-worker.js 執行，
     // 避免多檔案或大檔案時佔住主執行緒讓畫面卡死。這裡只負責收集設定值與檔案、
     // 用 transferable objects 把 ArrayBuffer 丟給 worker，以及收到結果後更新預覽／下載按鈕。
