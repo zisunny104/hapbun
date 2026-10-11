@@ -13,11 +13,22 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
     <meta charset="UTF-8">
     <title>合本 - KoiLiSu | prjToka</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tocas-ui/5.7.0/tocas.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tocas-ui/5.7.0/tocas.min.js"></script>
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-    <script src="https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
-    <script src="https://unpkg.com/downloadjs@1.4.7/download.min.js"></script>
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tocas-ui/5.7.0/tocas.min.css"
+        integrity="sha512-F4xj0Qcc6/jwQjpN70mZP1F5edUVg/WbWEYqUu1FEnvZFAg5IxvBAlNgji+6547uhPtaO14HmBdMhsZ19fHVSw=="
+        crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tocas-ui/5.7.0/tocas.min.js"
+        integrity="sha512-nzuAF7sDvUg8SagRIjY6B5mXfwuMW/3fOU/LITsIukL7PVzfN1srR+2GSfqYr53gRkq8B2y0Sb7Z66ZRMmtxdg=="
+        crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"
+        integrity="sha512-z8IYLHO8bTgFqj+yrPyIJnzBDf7DDhWwiEsk4sY+Oe6J2M+WQequeGS7qioI5vT6rXgVRb4K1UVQC5ER7MKzKQ=="
+        crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"
+        integrity="sha512-nN5LMjOUxjpCutlx3vCE453XaDaDYhjwM+0uYxHMo7wVW9SLhLi6kspqdcuWGrLYHkENUwtkiNeSlVflBQAQGQ=="
+        crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/downloadjs@1.4.7/download.min.js"
+        integrity="sha512-XtozXGVMBVPZbgBEOShFRZ3A+vu/nNpMSnXipDml00gHqLmkUI35HeKjctp/q74Rtx1JQykCOzwk/y19R2fizA=="
+        crossorigin="anonymous"></script>
 
     <style type="text/css">
     /* Tocas 沒有能取消繼承粗體的 utility；.ts-header.is-heavy 的 font-weight:700 會
@@ -1086,7 +1097,7 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
                     <div class="ts-wrap is-vertical is-compact">
                         <div class="ts-text is-description">
                             <a href="/koilisu/" class="footer-plain-link">KoiLiSu 開利手</a> -
-                            讓工具使用更順手的開放專案 | <a href="https://toka.dev" target="_blank" rel="noopener" class="footer-plain-link">prjToka</a>
+                            讓工具使用更順手的開放專案 | <a href="https://toka.dev" target="_blank" rel="noopener noreferrer" class="footer-plain-link">prjToka</a>
                         </div>
                         <div class="ts-wrap is-middle-aligned is-compact">
                             <button type="button" id="btn-license" class="ts-button is-small is-start-icon footer-action-button">
@@ -1355,7 +1366,8 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
             `is-rounded is-${theme}`;
 
         // Save theme preference to cookie
-        document.cookie = `preferred-theme=${theme}; path=/; max-age=31536000; SameSite=Lax`; // 1 year
+        const secure = location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `preferred-theme=${theme}; path=/; max-age=31536000; SameSite=Lax${secure}`; // 1 year
     }
 
     function getPreferredTheme() {
