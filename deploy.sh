@@ -162,7 +162,7 @@ fi
 
 BRANCH="${DEPLOY_BRANCH:-main}"
 
-# hapbun 是 PHP 頁面殼＋瀏覽器端 JS，唯一的伺服器端依賴是 fonts/ 裡的 Noto Sans TC 字型快取
+# hapbun 的 PHP 只輸出頁面，功能在瀏覽器端 JS，唯一的伺服器端依賴是 fonts/ 裡的 Noto Sans TC 字型快取
 # （不進版本控制），更新完會檢查，缺了就引導安裝。
 
 require_cmd git git
