@@ -56,11 +56,11 @@ PDF 合併排版工具，可設定多頁、增加封面與目錄、頁碼，方�
 
 ## 部署
 
-更新用 `./deploy.sh`：先檢查工作目錄，再 fast-forward 到遠端最新版，最後檢查字型。
+更新用 `./deploy.sh`：先檢查工作目錄，再 fast-forward 到 remote 最新版，最後檢查字型。
 
 - 字型缺少或與預期版本不同時，互動終端機會詢問是否下載；非互動環境（被其他腳本或 CI 呼叫）預設不下載，只印出提示，設定 `DEPLOY_INSTALL_FONTS=1` 可自動下載。
 - 字型也可隨時手動安裝：`php install_font.php`（`--force` 強制重新下載，`--check` 只檢查狀態）。
-- 下載後會比對 SHA-256，不符就不替換現有檔案；Google 更新字型檔導致不符時，確認新檔案可信後更新 `font-install-lib.php` 內的網址與摘要。
+- 下載後會比對 SHA-256，不符就不替換現有檔案；Google 更新字型檔導致不符時，確認新檔案可信後更新 `font-install-lib.php` 內的網址與雜湊。
 - 字型未安裝不影響網站運作（瀏覽器會改從 Google Fonts 載入），安裝後可少一次外部連線。
 - 部署完成後會自動檢查 `.git/` 能不能被網頁下載。用 `DEPLOY_CHECK_URL=https://example.com/project ./deploy.sh` 指定網站網址，沒設就只提醒。用 `./deploy.sh --set-check-url https://example.com/project` 存一次，之後不必再帶環境變數。`./deploy.sh --check-only` 不更新程式碼，只做這項檢查。發現外洩時印出可貼的 nginx 設定，並以非 0 結束。
 
@@ -132,4 +132,4 @@ PDF 合併排版工具，可設定多頁、增加封面與目錄、頁碼，方�
 - 封面和目錄生成功能
 - 檔案拖曳排序與章節編輯
 
-部署腳本不執行語法檢查或完整測試；請在提交前或 CI 執行專案檢查。
+部署腳本不執行語法檢查或完整測試；請在 commit 前或 CI 執行專案檢查。

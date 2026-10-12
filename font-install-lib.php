@@ -12,7 +12,7 @@ function font_install_atomic_write(string $dest, string $data): bool {
     }
 }
 
-/** 驗證摘要與大小後安裝字型。 */
+/** 驗證雜湊與大小後安裝字型。 */
 function downloadFont(string $url, string $dest, string $expectedSha): array {
     $context = stream_context_create([
         'http' => ['timeout' => 30, 'follow_location' => 0],
@@ -42,7 +42,7 @@ function font_install_manifest(): array {
     ];
 }
 
-/** 檔案狀態：ok（摘要相符）、missing（不存在或為空）、mismatch（存在但摘要不同）。 */
+/** 檔案狀態：ok（雜湊相符）、missing（不存在或為空）、mismatch（存在但雜湊不同）。 */
 function font_install_status(string $path, string $expectedSha): string {
     if (!is_file($path) || filesize($path) === 0) return 'missing';
     return hash_equals($expectedSha, (string)hash_file('sha256', $path)) ? 'ok' : 'mismatch';
@@ -52,12 +52,12 @@ function font_install_status(string $path, string $expectedSha): string {
 function font_install_explain(string $code): string {
     switch ($code) {
         case 'sha256_mismatch':
-            return '下載內容與記錄的摘要不符（Google 可能更新了檔案）；現有檔案維持不動，網站仍可使用現有字型或改從 CDN 載入。'
+            return '下載內容與記錄的雜湊不符（Google 可能更新了檔案）；現有檔案維持不動，網站仍可使用現有字型或改從 CDN 載入。'
                 . '確認新檔案可信後，更新 font-install-lib.php 內的網址與 sha256';
         case 'font_too_large': return '下載內容超過大小上限，已放棄';
         case 'file_get_contents_failed': return '連不上下載網址（網路、DNS 或防火牆）';
         case 'allow_url_fopen_disabled': return 'PHP 的 allow_url_fopen 未開啟，請在 CLI 的 php.ini 開啟';
-        case 'openssl_extension_missing': return 'PHP 未載入 openssl 擴充套件，請在 php.ini 開啟 extension=openssl';
+        case 'openssl_extension_missing': return 'PHP 未載入 openssl extension，請在 php.ini 開啟 extension=openssl';
         case 'save_failed': return '無法寫入 fonts/，請確認目前使用者有寫入權限';
         default: return $code;
     }

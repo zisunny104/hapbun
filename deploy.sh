@@ -110,7 +110,7 @@ selfcheck_web() {
     exposed)
       CRIT=1
       fail "${BOLD}${RED}.git/ 可被下載${RESET}  ${DIM}回 200，${url}${RESET}"
-      echo "  ${BOLD}${RED}整份原始碼與提交歷史都能被任何人取得${RESET}"
+      echo "  ${BOLD}${RED}整份原始碼與 commit 歷史都能被任何人取得${RESET}"
       echo "  ${BOLD}修法${RESET}：貼進 nginx 的 server 區塊再 reload，或用 sudo ./deploy.sh --configure-nginx <設定檔> 自動處理"
       echo "${CYAN}${NGINX_SNIPPET}${RESET}"
       echo "  ${DIM}完成後執行 ./deploy.sh --check-only 重測${RESET}" ;;
@@ -162,21 +162,21 @@ fi
 
 BRANCH="${DEPLOY_BRANCH:-main}"
 
-# hapbun 的 PHP 只輸出頁面，功能在瀏覽器端 JS，唯一的伺服器端依賴是 fonts/ 裡的 Noto Sans TC 字型快取
+# hapbun 的 PHP 只輸出頁面，功能在瀏覽器端 JS，唯一的伺服器端相依性是 fonts/ 裡的 Noto Sans TC 字型快取
 # （不進版本控制），更新完會檢查，缺了就引導安裝。
 
 require_cmd git git
 
 step "檢查本機變更"
-# 手動改過的檔案會讓快轉失敗，先列出並中止。
+# 手動改過的檔案會讓 fast-forward 失敗，先列出並中止。
 DIRTY="$(git status --porcelain --untracked-files=no)"
 if [ -n "$DIRTY" ]; then
-  fail "有未提交的修改，部署已中止："
+  fail "有未 commit 的修改，部署已中止："
   sed 's/^/    /' <<< "$DIRTY"
-  echo "  ${DIM}請先提交或備份上述修改，再執行 ./deploy.sh${RESET}"
+  echo "  ${DIM}請先 commit 或備份上述修改，再執行 ./deploy.sh${RESET}"
   exit 1
 fi
-ok "沒有未提交的修改"
+ok "沒有未 commit 的修改"
 
 HAS_PHP=0
 if command -v php >/dev/null 2>&1; then
@@ -187,16 +187,16 @@ else
   install_hint php-cli
 fi
 
-step "取得遠端版本"
+step "取得 remote 版本"
 BEFORE=$(git rev-parse --short HEAD)
 git fetch --quiet origin "$BRANCH"
 AFTER=$(git rev-parse --short FETCH_HEAD)
-ok "遠端分支 ${BRANCH}：${AFTER}"
+ok "remote branch ${BRANCH}：${AFTER}"
 
 if [ "$(git rev-parse HEAD)" != "$(git rev-parse FETCH_HEAD)" ] && ! git merge-base --is-ancestor HEAD FETCH_HEAD; then
-  # 本機與遠端分歧時無法快轉，不在伺服器上產生 merge commit。
-  fail "本機與遠端版本已分歧，無法快轉更新，部署已中止"
-  echo "  ${DIM}請先保留並確認本機提交：git log ${AFTER}..HEAD${RESET}"
+  # 本機與 remote diverge 時無法 fast-forward，不在伺服器上產生 merge commit。
+  fail "本機與 remote 版本已 diverge，無法 fast-forward 更新，部署已中止"
+  echo "  ${DIM}請先保留並確認本機 commit：git log ${AFTER}..HEAD${RESET}"
   exit 1
 fi
 
@@ -222,8 +222,8 @@ if [ -n "${DEPLOY_RELOAD_CMD:-}" ] && [ "$BEFORE" != "$AFTER" ]; then
   fi
 fi
 
-step "檢查依賴：Noto Sans TC 字型（fonts/）"
-# 狀態由 install_font.php --check 判斷（摘要與清單只維護一份）；沒有 php 時只能看檔案是否存在。
+step "檢查相依性：Noto Sans TC 字型（fonts/）"
+# 狀態由 install_font.php --check 判斷（雜湊與清單只維護一份）；沒有 php 時只能看檔案是否存在。
 # 每行格式：狀態<TAB>檔名，狀態為 ok／missing／mismatch
 if [ "$HAS_PHP" -eq 1 ]; then
   STATUS="$(php install_font.php --check 2>/dev/null || true)"
@@ -237,18 +237,18 @@ MISSING="$(awk -F'\t' '$1=="missing"{printf "%s ", $2}' <<< "$STATUS")"
 MISMATCH="$(awk -F'\t' '$1=="mismatch"{printf "%s ", $2}' <<< "$STATUS")"
 [ -n "$STATUS" ] || MISSING="（無法執行 install_font.php --check） "
 if [ -z "$MISSING" ] && [ -z "$MISMATCH" ]; then
-  ok "字型已就緒：NotoSansTC-Regular.ttf NotoSansTC-Bold.ttf（摘要與授權檔皆相符）"
+  ok "字型已就緒：NotoSansTC-Regular.ttf NotoSansTC-Bold.ttf（雜湊與授權檔皆相符）"
 else
   [ -z "$MISSING" ] || warn "缺少：${MISSING}"
   [ -z "$MISMATCH" ] || warn "與預期版本不同（可能是手動放的舊版或已損壞）：${MISMATCH}"
   [ -z "$MISSING" ] || echo "  ${DIM}缺少字型時，瀏覽器會改從 Google Fonts 下載；兩邊都失敗則 PDF 封面／目錄的中文會被略過（頁面會顯示警告）${RESET}"
-  [ -z "$MISMATCH" ] || echo "  ${DIM}摘要不同的字型檔仍會被瀏覽器使用，只要確實是 Noto Sans TC 就能正常運作；想換成官方版本請執行下載${RESET}"
+  [ -z "$MISMATCH" ] || echo "  ${DIM}雜湊不同的字型檔仍會被瀏覽器使用，只要確實是 Noto Sans TC 就能正常運作；想換成官方版本請執行下載${RESET}"
   if [ "$HAS_PHP" -eq 1 ]; then
     if [ "$(php -r 'echo ini_get("allow_url_fopen") ? 1 : 0;')" != "1" ]; then
       warn "PHP 的 allow_url_fopen 未開啟，CLI install_font.php 無法下載字型"
     fi
     if [ "$(php -r 'echo extension_loaded("openssl") ? 1 : 0;')" != "1" ]; then
-      warn "PHP 未載入 openssl 擴充套件，無法下載 https 網址（php.ini 開啟 extension=openssl）"
+      warn "PHP 未載入 openssl extension，無法下載 https 網址（php.ini 開啟 extension=openssl）"
     fi
   fi
   if [ -e fonts ] && [ ! -w fonts ]; then
@@ -277,7 +277,7 @@ else
     fail "沒有 php 指令，無法下載字型；請在有 PHP CLI 的環境執行 php install_font.php"
   else
     echo "  之後可在此目錄執行："
-    echo "    ${BOLD}php install_font.php${RESET}             ${DIM}# 下載缺少或摘要不符的字型${RESET}"
+    echo "    ${BOLD}php install_font.php${RESET}             ${DIM}# 下載缺少或雜湊不符的字型${RESET}"
     echo "    ${BOLD}php install_font.php --force${RESET}     ${DIM}# 已是正確版本也重新下載${RESET}"
   fi
   if [ -d fonts ] && [ "$(id -u)" = "0" ]; then
