@@ -26,9 +26,7 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
     <script src="https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"
         integrity="sha512-nN5LMjOUxjpCutlx3vCE453XaDaDYhjwM+0uYxHMo7wVW9SLhLi6kspqdcuWGrLYHkENUwtkiNeSlVflBQAQGQ=="
         crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/downloadjs@1.4.7/download.min.js"
-        integrity="sha512-XtozXGVMBVPZbgBEOShFRZ3A+vu/nNpMSnXipDml00gHqLmkUI35HeKjctp/q74Rtx1JQykCOzwk/y19R2fizA=="
-        crossorigin="anonymous"></script>
+    <script src="js/download.min.js"></script>
 
     <style type="text/css">
     /* Tocas 沒有能取消繼承粗體的 utility；.ts-header.is-heavy 的 font-weight:700 會
