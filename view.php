@@ -147,17 +147,19 @@ $appVersion = $appConfig['version'] ?? '0.0.0';
     }
 
     /* Tocas 的 .ts-selection 無直向堆疊版型，手機寬度下改垂直排列並重設高度/圓角 */
-    .ts-selection.theme-switcher-stacked {
-        flex-direction: column;
-        height: auto;
-        align-items: stretch;
-        gap: 0.2rem;
-        padding: 0.35rem;
-        border-radius: var(--ts-border-radius-container, 8px);
-    }
+    @media (max-width: 480px) {
+        .ts-selection.theme-switcher-stacked {
+            flex-direction: column;
+            height: auto;
+            align-items: stretch;
+            gap: 0.2rem;
+            padding: 0.35rem;
+            border-radius: var(--ts-border-radius-container, 8px);
+        }
 
-    .ts-selection.theme-switcher-stacked .item .text {
-        width: 100%;
+        .ts-selection.theme-switcher-stacked .item .text {
+            width: 100%;
+        }
     }
     </style>
     <script id="clientEventHandlersJS" language="javascript" type="text/javascript">
